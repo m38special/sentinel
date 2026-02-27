@@ -124,9 +124,10 @@ class SentinelDB:
 
 
 def sanitize(s: str, max_len: int = 64) -> str:
+    # NEW-04: Don't strip _ since validate_token() now allows it
     if not s:
         return 'Unknown'
-    s = s.replace('*', '').replace('_', '').replace('`', '').replace('[', '').replace(']', '')
+    s = s.replace('*', '').replace('`', '').replace('[', '').replace(']', '')
     return s[:max_len].strip()
 
 
@@ -208,22 +209,59 @@ Detected: {signal.detected_at}
 
 
 def send_alerts(db: SentinelDB):
-    """Sync wrapper for alerts"""
-    signals = db.get_unalerted()
-    if not signals:
-        return
-    for signal in signals:
-        message = format_alert(signal)
-        slack_ok = send_slack_alert(message)
-        tg_ok = send_telegram_alert(message)
-        if slack_ok or tg_ok:
-            signal.alert_sent = True
-            db.insert_or_update(signal)
+    """NEW-01: Atomic alert - mark sent BEFORE sending to prevent duplicates"""
+    import sqlite3
+    
+    conn = sqlite3.connect(db.db_path)
+    conn.row_factory = sqlite3.Row
+    
+    try:
+        # Atomic: select and mark in one transaction
+        cursor = conn.execute('''
+            SELECT * FROM signals 
+            WHERE alert_sent = 0 AND signal_level IN ('HIGH', 'MEDIUM')
+            LIMIT 10
+        ''')
+        rows = cursor.fetchall()
+        
+        if not rows:
+            conn.close()
+            return
+        
+        # Mark as sent BEFORE alerting (prevents race condition)
+        ids_to_mark = [r['id'] for r in rows]
+        conn.execute(
+            f'UPDATE signals SET alert_sent = 1 WHERE id IN ({",".join("?" * len(ids_to_mark))})',
+            ids_to_mark
+        )
+        conn.commit()
+        
+        # Now send alerts (safe - duplicates won't be picked up)
+        for r in rows:
+            signal = TokenSignal(
+                mint=r['mint'], name=r['name'], symbol=r['symbol'],
+                market_cap=r['market_cap'], fdv=r['fdv'], holders=r['holders'],
+                volume_30m=r['volume_30m'], tx_buy=r['tx_buy'], tx_sell=r['tx_sell'],
+                risk_score=r['risk_score'], risk_level=r['risk_level'],
+                signal_level=r['signal_level'], detected_at=r['detected_at'],
+                alert_sent=True
+            )
+            message = format_alert(signal)
+            send_slack_alert(message)
+            send_telegram_alert(message)
+            
+    except Exception as e:
+        logger.error(f"Alert error: {e}")
+    finally:
+        conn.close()
 
 
 async def send_alerts_async(db: SentinelDB):
-    """REAL-03: Async wrapper - run alerts without blocking the WS listener"""
-    loop = asyncio.get_event_loop()
+    """NEW-03: Use get_running_loop() instead of deprecated get_event_loop()"""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, send_alerts, db)
 
 
@@ -294,7 +332,9 @@ async def listen_forever():
                             logger.info(f"📡 {signal.symbol}: {signal.signal_level}/{signal.risk_level}")
                             
                             # REAL-03: Don't block the listener - send alerts async
-                            asyncio.create_task(send_alerts_async(db))
+                            # NEW-02: Add done callback to catch exceptions
+                            task = asyncio.create_task(send_alerts_async(db))
+                            task.add_done_callback(lambda t: logger.error(f"Alert task failed: {t.exception()}") if t.exception() else None)
                             
                     except json.JSONDecodeError:
                         logger.warning(f"Invalid JSON: {raw[:100]}")
