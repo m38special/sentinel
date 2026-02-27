@@ -8,7 +8,7 @@ import sqlite3
 import logging
 import os
 import websockets
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 
 logging.basicConfig(
@@ -131,11 +131,15 @@ def sanitize(s: str, max_len: int = 64) -> str:
 
 
 def validate_token(token: dict) -> bool:
+    # REAL-05: Allow hyphens and underscores in symbols
     mint = token.get('mint', '')
     if not mint or len(mint) > 44:
         return False
     symbol = token.get('symbol', '')
-    if not symbol or len(symbol) > 10 or not symbol.replace('$', '').isalnum():
+    if not symbol or len(symbol) > 10:
+        return False
+    # Allow alphanumeric, hyphens, underscores
+    if not symbol.replace('$', '').replace('-', '').replace('_', '').isalnum():
         return False
     name = token.get('name', '')
     if len(name) > 64:
@@ -204,7 +208,7 @@ Detected: {signal.detected_at}
 
 
 def send_alerts(db: SentinelDB):
-    from alerts import send_slack_alert, send_telegram_alert
+    """Sync wrapper for alerts"""
     signals = db.get_unalerted()
     if not signals:
         return
@@ -217,6 +221,12 @@ def send_alerts(db: SentinelDB):
             db.insert_or_update(signal)
 
 
+async def send_alerts_async(db: SentinelDB):
+    """REAL-03: Async wrapper - run alerts without blocking the WS listener"""
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, send_alerts, db)
+
+
 async def listen_forever():
     """WebSocket listener for PumpPortal"""
     logger.info(f"Connecting to {PUMP_WS_URL}...")
@@ -224,13 +234,15 @@ async def listen_forever():
     
     while True:
         try:
-            async with websockets.connect(PUMP_WS_URL) as ws:
+            # REAL-04: Add keepalive to prevent Railway dropping idle connections
+            async with websockets.connect(PUMP_WS_URL, ping_interval=20, ping_timeout=10) as ws:
                 logger.info("Connected to PumpPortal WebSocket")
                 
                 # Subscribe to new token events
+                # REAL-01: PumpPortal expects "keys": [] or no keys field for global subscription
                 subscribe_msg = {
                     "method": "subscribeNewToken",
-                    "keys": [NETWORK]
+                    "keys": []
                 }
                 if PUMP_API_KEY:
                     subscribe_msg["apiKey"] = PUMP_API_KEY
@@ -243,9 +255,10 @@ async def listen_forever():
                     try:
                         data = json.loads(raw)
                         
-                        # Handle different message types
-                        if data.get('method') == 'newToken' or 'data' in data:
-                            token = data.get('data', data)
+                        # REAL-02: Only process actual newToken events, not broad 'data' messages
+                        # Filter out ACKs, errors, pings
+                        if data.get('method') == 'newToken' and 'data' in data:
+                            token = data.get('data', {})
                             
                             if not validate_token(token):
                                 continue
@@ -274,14 +287,14 @@ async def listen_forever():
                                 risk_score=risk_score,
                                 risk_level=risk_level,
                                 signal_level=signal_level,
-                                detected_at=datetime.utcnow().isoformat(),
+                                detected_at=datetime.now(timezone.utc).isoformat(),  # REAL-06
                             )
                             
                             db.insert_or_update(signal)
                             logger.info(f"📡 {signal.symbol}: {signal.signal_level}/{signal.risk_level}")
                             
-                            # Send alerts
-                            send_alerts(db)
+                            # REAL-03: Don't block the listener - send alerts async
+                            asyncio.create_task(send_alerts_async(db))
                             
                     except json.JSONDecodeError:
                         logger.warning(f"Invalid JSON: {raw[:100]}")
