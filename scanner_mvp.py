@@ -187,6 +187,7 @@ async def fetch_new_tokens() -> List[dict]:
                     raw = await resp.content.read(MAX_RESPONSE_SIZE)
                     if len(raw) >= MAX_RESPONSE_SIZE:
                         logger.error(f"Response truncated at {MAX_RESPONSE_SIZE} bytes")
+                        return []  # F-03: Don't parse truncated JSON
                     import json
                     data = json.loads(raw.decode('utf-8'))
                     # Cap response to prevent OOM
