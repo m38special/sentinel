@@ -1,15 +1,15 @@
 """
 SENTINEL MVP — Pump.fun Token Scanner
-Real-time scraper with asyncio, 5-min polling, SQLite storage, alerts
+Real-time WebSocket listener for new token events
 """
 import asyncio
-import aiohttp
+import json
 import sqlite3
 import logging
 import os
+import websockets
 from datetime import datetime
 from dataclasses import dataclass
-from typing import List
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,20 +17,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-POLL_INTERVAL = 300  # 5 minutes
-DB_PATH = os.getenv('DB_PATH', '/app/data/sentinel.db')  # F-07: safe default in volume
-PUMP_API_URL = os.getenv('PUMP_API_URL', 'https://api.pumpportal.fun/api/tokens/new')
-# F-02: Optional API key for PumpPortal
+DB_PATH = os.getenv('DB_PATH', '/app/data/sentinel.db')
+PUMP_WS_URL = os.getenv('PUMP_WS_URL', 'wss://pumpportal.fun/api/data')
 PUMP_API_KEY = os.getenv('PUMP_API_KEY', '')
-
-# F-07: Validate DB path at startup
-if DB_PATH == 'sentinel.db' or not DB_PATH.startswith('/app/'):
-    logger.warning(f"DB_PATH={DB_PATH} - ensure volume mount is configured")
 NETWORK = 'solana'
 
 MIN_MARKET_CAP = 10_000
 HIGH_MARKET_CAP = 500_000
 MEDIUM_MARKET_CAP = 50_000
+
+# F-07: Validate DB path at startup
+if DB_PATH == 'sentinel.db' or not DB_PATH.startswith('/app/'):
+    logger.warning(f"DB_PATH={DB_PATH} - ensure volume mount is configured")
 
 
 @dataclass
@@ -83,7 +81,6 @@ class SentinelDB:
     def insert_or_update(self, signal: TokenSignal) -> bool:
         conn = sqlite3.connect(self.db_path)
         try:
-            # F-01 fix: explicit column list, exclude AUTOINCREMENT id
             conn.execute('''
                 INSERT OR REPLACE INTO signals 
                 (mint, name, symbol, market_cap, fdv, holders, volume_30m,
@@ -108,7 +105,7 @@ class SentinelDB:
         conn.close()
         return not exists
     
-    def get_unalerted(self) -> List[TokenSignal]:
+    def get_unalerted(self):
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.execute(
@@ -124,6 +121,26 @@ class SentinelDB:
             signal_level=r['signal_level'], detected_at=r['detected_at'],
             alert_sent=bool(r['alert_sent'])
         ) for r in rows] if rows else []
+
+
+def sanitize(s: str, max_len: int = 64) -> str:
+    if not s:
+        return 'Unknown'
+    s = s.replace('*', '').replace('_', '').replace('`', '').replace('[', '').replace(']', '')
+    return s[:max_len].strip()
+
+
+def validate_token(token: dict) -> bool:
+    mint = token.get('mint', '')
+    if not mint or len(mint) > 44:
+        return False
+    symbol = token.get('symbol', '')
+    if not symbol or len(symbol) > 10 or not symbol.replace('$', '').isalnum():
+        return False
+    name = token.get('name', '')
+    if len(name) > 64:
+        return False
+    return True
 
 
 def calculate_risk(token: dict) -> tuple[int, str]:
@@ -170,59 +187,8 @@ def determine_signal(market_cap: float, risk_level: str) -> str:
     return 'LOW'
 
 
-MAX_RESPONSE_SIZE = 10 * 1024 * 1024  # F-03: 10MB cap
-
-async def fetch_new_tokens() -> List[dict]:
-    try:
-        headers = {}
-        # F-02: Add API key header if configured
-        if PUMP_API_KEY:
-            headers['Authorization'] = f'Bearer {PUMP_API_KEY}'
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.get(PUMP_API_URL, params={'network': NETWORK}, 
-                                   headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                if resp.status == 200:
-                    # F-03 FIX: Read raw bytes with limit, then parse JSON
-                    raw = await resp.content.read(MAX_RESPONSE_SIZE)
-                    if len(raw) >= MAX_RESPONSE_SIZE:
-                        logger.error(f"Response truncated at {MAX_RESPONSE_SIZE} bytes")
-                        return []  # F-03: Don't parse truncated JSON
-                    import json
-                    data = json.loads(raw.decode('utf-8'))
-                    # Cap response to prevent OOM
-                    return (data if isinstance(data, list) else [])[:1000]
-    except Exception as e:
-        logger.error(f"Fetch failed: {e}")
-    return []
-
-
-def sanitize(s: str, max_len: int = 64) -> str:
-    """F-05, F-06: Sanitize external input - escape markdown, limit length"""
-    if not s:
-        return 'Unknown'
-    # Strip markdown special chars
-    s = s.replace('*', '').replace('_', '').replace('`', '').replace('[', '').replace(']', '')
-    return s[:max_len].strip()
-
-
-def validate_token(token: dict) -> bool:
-    """F-06: Input validation on token fields"""
-    mint = token.get('mint', '')
-    if not mint or len(mint) > 44:
-        return False
-    symbol = token.get('symbol', '')
-    if not symbol or len(symbol) > 10 or not symbol.replace('$', '').isalnum():
-        return False
-    name = token.get('name', '')
-    if len(name) > 64:
-        return False
-    return True
-
-
 def format_alert(signal: TokenSignal) -> str:
     emoji = '🚨' if signal.signal_level == 'HIGH' else '⚠️'
-    # F-05: sanitize external fields
     name = sanitize(signal.name, 64)
     symbol = sanitize(signal.symbol, 10)
     mint = sanitize(signal.mint, 44)
@@ -237,14 +203,13 @@ Detected: {signal.detected_at}
     """.strip()
 
 
-async def send_alerts(db: SentinelDB):
+def send_alerts(db: SentinelDB):
     from alerts import send_slack_alert, send_telegram_alert
     signals = db.get_unalerted()
     if not signals:
         return
     for signal in signals:
         message = format_alert(signal)
-        # F-04: Only mark sent if both alerts succeed
         slack_ok = send_slack_alert(message)
         tg_ok = send_telegram_alert(message)
         if slack_ok or tg_ok:
@@ -252,68 +217,100 @@ async def send_alerts(db: SentinelDB):
             db.insert_or_update(signal)
 
 
-async def scan_once(db: SentinelDB) -> int:
-    logger.info("Scanning for new tokens...")
-    tokens = await fetch_new_tokens()
-    new_count = 0
-    for token in tokens:
-        # F-06: validate token before processing
-        if not validate_token(token):
-            continue
-        mint = token.get('mint', '')
-        if not mint or not db.is_new_token(mint):
-            continue
-        market_cap = token.get('usd_market_cap', 0) or 0
-        if market_cap < MIN_MARKET_CAP:
-            continue
-        risk_score, risk_level = calculate_risk(token)
-        signal_level = determine_signal(market_cap, risk_level)
-        signal = TokenSignal(
-            mint=mint, name=token.get('name', 'Unknown'), symbol=token.get('symbol', '???'),
-            market_cap=market_cap, fdv=token.get('usd_fdv', 0) or 0,
-            holders=token.get('holder_count', 0) or 0, volume_30m=token.get('volume_30m', 0) or 0,
-            tx_buy=token.get('tx_count_buy', 0) or 0, tx_sell=token.get('tx_count_sell', 0) or 0,
-            risk_score=risk_score, risk_level=risk_level, signal_level=signal_level,
-            detected_at=datetime.utcnow().isoformat(),
-        )
-        db.insert_or_update(signal)
-        new_count += 1
-        logger.info(f"📡 {signal.symbol}: {signal.signal_level}/{signal.risk_level}")
-    if new_count > 0:
-        await send_alerts(db)
-    return new_count
-
-
-async def run_forever():
-    logger.info(f"SENTINEL MVP started — polling every {POLL_INTERVAL}s")
+async def listen_forever():
+    """WebSocket listener for PumpPortal"""
+    logger.info(f"Connecting to {PUMP_WS_URL}...")
     db = SentinelDB(DB_PATH)
+    
     while True:
         try:
-            count = await scan_once(db)
-            logger.info(f"Cycle complete — {count} new tokens")
+            async with websockets.connect(PUMP_WS_URL) as ws:
+                logger.info("Connected to PumpPortal WebSocket")
+                
+                # Subscribe to new token events
+                subscribe_msg = {
+                    "method": "subscribeNewToken",
+                    "keys": [NETWORK]
+                }
+                if PUMP_API_KEY:
+                    subscribe_msg["apiKey"] = PUMP_API_KEY
+                
+                await ws.send(json.dumps(subscribe_msg))
+                logger.info(f"Subscribed to new token events on {NETWORK}")
+                
+                # Listen for messages
+                async for raw in ws:
+                    try:
+                        data = json.loads(raw)
+                        
+                        # Handle different message types
+                        if data.get('method') == 'newToken' or 'data' in data:
+                            token = data.get('data', data)
+                            
+                            if not validate_token(token):
+                                continue
+                            
+                            mint = token.get('mint', '')
+                            if not mint or not db.is_new_token(mint):
+                                continue
+                            
+                            market_cap = token.get('usd_market_cap', 0) or 0
+                            if market_cap < MIN_MARKET_CAP:
+                                continue
+                            
+                            risk_score, risk_level = calculate_risk(token)
+                            signal_level = determine_signal(market_cap, risk_level)
+                            
+                            signal = TokenSignal(
+                                mint=mint,
+                                name=token.get('name', 'Unknown'),
+                                symbol=token.get('symbol', '???'),
+                                market_cap=market_cap,
+                                fdv=token.get('usd_fdv', 0) or 0,
+                                holders=token.get('holder_count', 0) or 0,
+                                volume_30m=token.get('volume_30m', 0) or 0,
+                                tx_buy=token.get('tx_count_buy', 0) or 0,
+                                tx_sell=token.get('tx_count_sell', 0) or 0,
+                                risk_score=risk_score,
+                                risk_level=risk_level,
+                                signal_level=signal_level,
+                                detected_at=datetime.utcnow().isoformat(),
+                            )
+                            
+                            db.insert_or_update(signal)
+                            logger.info(f"📡 {signal.symbol}: {signal.signal_level}/{signal.risk_level}")
+                            
+                            # Send alerts
+                            send_alerts(db)
+                            
+                    except json.JSONDecodeError:
+                        logger.warning(f"Invalid JSON: {raw[:100]}")
+                        
+        except websockets.exceptions.ConnectionClosed as e:
+            logger.warning(f"WebSocket closed: {e}. Reconnecting in 5s...")
+            await asyncio.sleep(5)
         except Exception as e:
-            logger.error(f"Scan error: {e}")
-        await asyncio.sleep(POLL_INTERVAL)
+            logger.error(f"WebSocket error: {e}. Reconnecting in 5s...")
+            await asyncio.sleep(5)
 
 
 if __name__ == '__main__':
+    # Health check server for Railway
     import threading
     from http.server import HTTPServer, BaseHTTPRequestHandler
     
-    # Simple health endpoint for Railway
     class HealthHandler(BaseHTTPRequestHandler):
         def do_GET(self):
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b'OK')
         def log_message(self, format, *args):
-            pass  # Suppress logging
+            pass
     
-    # Start health server on port 8080
     server = HTTPServer(('0.0.0.0', 8080), HealthHandler)
     thread = threading.Thread(target=server.serve_forever)
     thread.daemon = True
     thread.start()
     
-    # Run scanner
-    asyncio.run(run_forever())
+    logger.info("SENTINEL started — WebSocket mode")
+    asyncio.run(listen_forever())
