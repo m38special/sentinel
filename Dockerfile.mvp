@@ -2,11 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# F-10: Create non-root user
+RUN groupadd -r sentinel && useradd -r -g sentinel sentinel
+
 COPY requirements_mvp.txt .
 RUN pip install --no-cache-dir -r requirements_mvp.txt
 
 COPY . .
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chown -R sentinel:sentinel /app
+
+# F-10: Run as non-root
+USER sentinel
 
 CMD ["python3", "scanner_mvp.py"]

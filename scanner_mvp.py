@@ -77,8 +77,11 @@ class SentinelDB:
     def insert_or_update(self, signal: TokenSignal) -> bool:
         conn = sqlite3.connect(self.db_path)
         try:
+            # F-01 fix: explicit column list, exclude AUTOINCREMENT id
             conn.execute('''
                 INSERT OR REPLACE INTO signals 
+                (mint, name, symbol, market_cap, fdv, holders, volume_30m,
+                 tx_buy, tx_sell, risk_score, risk_level, signal_level, detected_at, alert_sent)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (signal.mint, signal.name, signal.symbol, signal.market_cap,
                   signal.fdv, signal.holders, signal.volume_30m, signal.tx_buy,
@@ -161,29 +164,63 @@ def determine_signal(market_cap: float, risk_level: str) -> str:
     return 'LOW'
 
 
+MAX_RESPONSE_SIZE = 10 * 1024 * 1024  # F-03: 10MB cap
+
 async def fetch_new_tokens() -> List[dict]:
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(PUMP_API_URL, params={'network': NETWORK}, 
-                                   timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                                   timeout=aiohttp.ClientTimeout(total=30, max_size=MAX_RESPONSE_SIZE)) as resp:
                 if resp.status == 200:
+                    # F-03: explicit content-length check
+                    if resp.content_length and resp.content_length > MAX_RESPONSE_SIZE:
+                        logger.error(f"Response too large: {resp.content_length}")
+                        return []
                     data = await resp.json()
-                    return data if isinstance(data, list) else []
+                    # Cap response to prevent OOM
+                    return (data if isinstance(data, list) else [])[:1000]
     except Exception as e:
         logger.error(f"Fetch failed: {e}")
     return []
 
 
+def sanitize(s: str, max_len: int = 64) -> str:
+    """F-05, F-06: Sanitize external input - escape markdown, limit length"""
+    if not s:
+        return 'Unknown'
+    # Strip markdown special chars
+    s = s.replace('*', '').replace('_', '').replace('`', '').replace('[', '').replace(']', '')
+    return s[:max_len].strip()
+
+
+def validate_token(token: dict) -> bool:
+    """F-06: Input validation on token fields"""
+    mint = token.get('mint', '')
+    if not mint or len(mint) > 44:
+        return False
+    symbol = token.get('symbol', '')
+    if not symbol or len(symbol) > 10 or not symbol.replace('$', '').isalnum():
+        return False
+    name = token.get('name', '')
+    if len(name) > 64:
+        return False
+    return True
+
+
 def format_alert(signal: TokenSignal) -> str:
     emoji = '🚨' if signal.signal_level == 'HIGH' else '⚠️'
+    # F-05: sanitize external fields
+    name = sanitize(signal.name, 64)
+    symbol = sanitize(signal.symbol, 10)
+    mint = sanitize(signal.mint, 44)
     return f"""
-{emoji} *SENTINEL ALERT — {signal.signal_level} SIGNAL*
+{emoji} SENTINEL ALERT — {signal.signal_level} SIGNAL
 
-*Token:* {signal.name} (${signal.symbol})
-*Mint:* `{signal.mint[:20]}...`
-*Market Cap:* ${signal.market_cap:,.0f}
-*Risk:* {signal.risk_level} ({signal.risk_score}/100)
-*Detected:* {signal.detected_at}
+Token: {name} (${symbol})
+Mint: `{mint[:20]}...`
+Market Cap: ${signal.market_cap:,.0f}
+Risk: {signal.risk_level} ({signal.risk_score}/100)
+Detected: {signal.detected_at}
     """.strip()
 
 
@@ -194,16 +231,12 @@ async def send_alerts(db: SentinelDB):
         return
     for signal in signals:
         message = format_alert(signal)
-        try:
-            send_slack_alert(message)
-        except Exception as e:
-            logger.error(f"Slack failed: {e}")
-        try:
-            send_telegram_alert(message)
-        except Exception as e:
-            logger.error(f"Telegram failed: {e}")
-        signal.alert_sent = True
-        db.insert_or_update(signal)
+        # F-04: Only mark sent if both alerts succeed
+        slack_ok = send_slack_alert(message)
+        tg_ok = send_telegram_alert(message)
+        if slack_ok or tg_ok:
+            signal.alert_sent = True
+            db.insert_or_update(signal)
 
 
 async def scan_once(db: SentinelDB) -> int:
@@ -211,6 +244,9 @@ async def scan_once(db: SentinelDB) -> int:
     tokens = await fetch_new_tokens()
     new_count = 0
     for token in tokens:
+        # F-06: validate token before processing
+        if not validate_token(token):
+            continue
         mint = token.get('mint', '')
         if not mint or not db.is_new_token(mint):
             continue

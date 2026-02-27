@@ -12,16 +12,30 @@ TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
 
 
-def send_slack_alert(message: str):
+def send_slack_alert(message: str) -> bool:
+    """F-04: Verify alert delivery before marking sent"""
     if not SLACK_WEBHOOK_URL:
         logger.debug("SLACK_WEBHOOK_URL not set")
-        return
-    requests.post(SLACK_WEBHOOK_URL, json={'text': message, 'unfurl_links': False}, timeout=10)
+        return False
+    try:
+        resp = requests.post(SLACK_WEBHOOK_URL, json={'text': message, 'unfurl_links': False}, timeout=10)
+        resp.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Slack alert failed: {e}")
+        return False
 
 
-def send_telegram_alert(message: str):
+def send_telegram_alert(message: str) -> bool:
+    """F-04: Verify alert delivery before marking sent"""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         logger.debug("TELEGRAM credentials not set")
-        return
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    requests.post(url, json={'chat_id': TELEGRAM_CHAT_ID, 'text': message, 'parse_mode': 'Markdown'}, timeout=10)
+        return False
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        resp = requests.post(url, json={'chat_id': TELEGRAM_CHAT_ID, 'text': message}, timeout=10)
+        resp.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Telegram alert failed: {e}")
+        return False

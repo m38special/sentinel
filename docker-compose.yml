@@ -13,7 +13,26 @@ services:
       - POLL_INTERVAL=300
     volumes:
       - sentinel_data:/app/data
+    # F-09: Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    # F-10: Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import sqlite3; sqlite3.connect('/app/data/sentinel.db')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   sentinel_data:
