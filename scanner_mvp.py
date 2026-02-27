@@ -336,6 +336,24 @@ async def listen_forever():
                             task = asyncio.create_task(send_alerts_async(db))
                             task.add_done_callback(lambda t: logger.error(f"Alert task failed: {t.exception()}") if t.exception() else None)
                             
+                            # Send to AXIOM via UAI for quant analysis
+                            try:
+                                from sentinel_to_axiom import send_to_axiom
+                                asyncio.create_task(asyncio.get_running_loop().run_in_executor(
+                                    None, send_to_axiom, {
+                                        'symbol': signal.symbol,
+                                        'name': signal.name,
+                                        'mint': signal.mint,
+                                        'market_cap': signal.market_cap,
+                                        'risk_score': signal.risk_score,
+                                        'risk_level': signal.risk_level,
+                                        'signal_level': signal.signal_level,
+                                        'detected_at': signal.detected_at
+                                    }
+                                ))
+                            except Exception as e:
+                                logger.error(f"AXIOM send failed: {e}")
+                            
                     except json.JSONDecodeError:
                         logger.warning(f"Invalid JSON: {raw[:100]}")
                         
