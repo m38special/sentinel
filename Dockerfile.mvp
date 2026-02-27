@@ -1,0 +1,12 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements_mvp.txt .
+RUN pip install --no-cache-dir -r requirements_mvp.txt
+
+COPY . .
+
+RUN mkdir -p /app/data
+
+CMD ["python3", "scanner_mvp.py"]
