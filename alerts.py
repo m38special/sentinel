@@ -7,20 +7,26 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-SLACK_WEBHOOK_URL = os.getenv('SLACK_WEBHOOK_URL', '')
+# Slack bot token (xoxb-...) + channel ID
+SLACK_BOT_TOKEN = os.getenv('SLACK_BOT_TOKEN', '')
+SLACK_CHANNEL_ID = os.getenv('SLACK_CHANNEL_ID', '')  # e.g., C0AHE2LQFRC for #idea-ocean
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
 
 
 def send_slack_alert(message: str) -> bool:
-    """F-04: Verify alert delivery - HTTP status AND ok field"""
-    if not SLACK_WEBHOOK_URL:
-        logger.debug("SLACK_WEBHOOK_URL not set")
+    """Send Slack alert via bot API (not webhook)"""
+    if not SLACK_BOT_TOKEN or not SLACK_CHANNEL_ID:
+        logger.debug("SLACK_BOT_TOKEN or SLACK_CHANNEL_ID not set")
         return False
     try:
-        resp = requests.post(SLACK_WEBHOOK_URL, json={'text': message, 'unfurl_links': False}, timeout=10)
+        url = "https://slack.com/api/chat.postMessage"
+        resp = requests.post(url, json={
+            'channel': SLACK_CHANNEL_ID,
+            'text': message,
+            'unfurl_links': False
+        }, headers={'Authorization': f'Bearer {SLACK_BOT_TOKEN}'}, timeout=10)
         resp.raise_for_status()
-        # F-04: Check Slack's {"ok": false} response
         body = resp.json()
         if not body.get('ok'):
             logger.error(f"Slack API error: {body.get('error', 'unknown')}")
