@@ -18,8 +18,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL = 300  # 5 minutes
-DB_PATH = os.getenv('DB_PATH', 'sentinel.db')
-PUMP_API_URL = 'https://api.pumpportal.fun/api/tokens/new'
+DB_PATH = os.getenv('DB_PATH', '/app/data/sentinel.db')  # F-07: safe default in volume
+PUMP_API_URL = os.getenv('PUMP_API_URL', 'https://api.pumpportal.fun/api/tokens/new')
+# F-02: Optional API key for PumpPortal
+PUMP_API_KEY = os.getenv('PUMP_API_KEY', '')
+
+# F-07: Validate DB path at startup
+if DB_PATH == 'sentinel.db' or not DB_PATH.startswith('/app/'):
+    logger.warning(f"DB_PATH={DB_PATH} - ensure volume mount is configured")
 NETWORK = 'solana'
 
 MIN_MARKET_CAP = 10_000
@@ -168,15 +174,21 @@ MAX_RESPONSE_SIZE = 10 * 1024 * 1024  # F-03: 10MB cap
 
 async def fetch_new_tokens() -> List[dict]:
     try:
+        headers = {}
+        # F-02: Add API key header if configured
+        if PUMP_API_KEY:
+            headers['Authorization'] = f'Bearer {PUMP_API_KEY}'
+        
         async with aiohttp.ClientSession() as session:
             async with session.get(PUMP_API_URL, params={'network': NETWORK}, 
-                                   timeout=aiohttp.ClientTimeout(total=30, max_size=MAX_RESPONSE_SIZE)) as resp:
+                                   headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
                 if resp.status == 200:
-                    # F-03: explicit content-length check
-                    if resp.content_length and resp.content_length > MAX_RESPONSE_SIZE:
-                        logger.error(f"Response too large: {resp.content_length}")
-                        return []
-                    data = await resp.json()
+                    # F-03 FIX: Read raw bytes with limit, then parse JSON
+                    raw = await resp.content.read(MAX_RESPONSE_SIZE)
+                    if len(raw) >= MAX_RESPONSE_SIZE:
+                        logger.error(f"Response truncated at {MAX_RESPONSE_SIZE} bytes")
+                    import json
+                    data = json.loads(raw.decode('utf-8'))
                     # Cap response to prevent OOM
                     return (data if isinstance(data, list) else [])[:1000]
     except Exception as e:
