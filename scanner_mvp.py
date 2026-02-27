@@ -297,4 +297,23 @@ async def run_forever():
 
 
 if __name__ == '__main__':
+    import threading
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    
+    # Simple health endpoint for Railway
+    class HealthHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'OK')
+        def log_message(self, format, *args):
+            pass  # Suppress logging
+    
+    # Start health server on port 8080
+    server = HTTPServer(('0.0.0.0', 8080), HealthHandler)
+    thread = threading.Thread(target=server.serve_forever)
+    thread.daemon = True
+    thread.start()
+    
+    # Run scanner
     asyncio.run(run_forever())
