@@ -94,10 +94,15 @@ def targeted_token_scan(self, token_name: str, token_symbol: str) -> dict:
             [token_name, token_symbol, f"${token_symbol}"],
         )
 
+        # Phase 4: Publish social signal to UAI
+        social_score = result.get("social_score", 0)
+        if social_score > 0:
+            _publish_social_signal(token_name, token_symbol, social_score)
+
         log.info(
             "nova_targeted_scan_complete",
             symbol=token_symbol,
-            social_score=result.get("social_score"),
+            social_score=social_score,
             mentions=result.get("mentions"),
         )
         return result
@@ -143,3 +148,38 @@ def _store_nova_scan(result: dict, scan_type: str, keywords: list):
             conn.commit()
     except Exception as e:
         log.warning("nova_scan_store_failed", error=str(e))  # non-fatal
+
+
+def _publish_social_signal(token_name: str, token_symbol: str, social_score: float):
+    """Publish NOVA social velocity score to UAI channel."""
+    import redis as redis_lib
+    import os
+    import json
+    from datetime import datetime, timezone
+
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    
+    try:
+        r = redis_lib.from_url(REDIS_URL, decode_responses=True)
+        
+        message = {
+            "id": f"soc-{datetime.now(timezone.utc).timestamp()}",
+            "from": "nova",
+            "to": "broadcast",
+            "intent": "social.sentiment",
+            "priority": "medium",
+            "payload": {
+                "token_name": token_name,
+                "token_symbol": token_symbol,
+                "social_score": social_score,
+                "source": "nova_scanner",
+                "ts": datetime.now(timezone.utc).isoformat(),
+            },
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "ttl": 600,
+        }
+        
+        r.publish("uai:events:social_signal", json.dumps(message))
+        log.info(f"📊 UAI → NOVA social: {token_symbol} = {social_score:.0f}")
+    except Exception as e:
+        log.warning("nova_social_publish_failed", error=str(e))

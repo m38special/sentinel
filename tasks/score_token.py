@@ -206,6 +206,11 @@ def score_and_route(self, token_data: dict[str, Any], social_score: float = 0.0)
         # Let route_alert own all threshold logic (avoids split-brain)
         route_alert.delay(enriched, score)
 
+        # 5. Phase 4: Publish security alert to CIPHER if high-risk flags
+        if risk_flags:
+            from tasks.security_alert import publish_security_alert
+            publish_security_alert.delay(enriched, risk_flags)
+
         return {"mint": mint, "score": score, "status": "processed"}
 
     except (OSError, ConnectionError, TimeoutError) as exc:

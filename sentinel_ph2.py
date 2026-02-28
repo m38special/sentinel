@@ -123,6 +123,77 @@ def _publish_uai_signal(token_data: dict, social_score: float, score: float):
         log.error(f"UAI publish failed: {e}")
 
 
+def _publish_security_alert(token_data: dict, risk_flags: list):
+    """
+    Publish security threat alert to CIPHER via UAI channel.
+    CIPHER subscribes to uai:events:security_alert.
+    """
+    r = get_redis()
+    if r is None:
+        log.warning("UAI: Redis not available, skipping security alert")
+        return
+
+    mint = token_data.get("mint", "")
+    symbol = token_data.get("symbol", "???")
+
+    message = {
+        "id": f"sec-{datetime.now(timezone.utc).timestamp()}",
+        "from": "sentinel",
+        "to": "cipher",
+        "intent": "security.threat_flag",
+        "priority": "critical" if len(risk_flags) >= 3 else "high",
+        "payload": {
+            "symbol": symbol,
+            "name": token_data.get("name", "Unknown"),
+            "mint": mint,
+            "risk_flags": risk_flags,
+            "liquidity_sol": token_data.get("liquidity_sol", 0),
+            "detected_at": token_data.get("detected_at"),
+        },
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "ttl": 300,
+    }
+
+    try:
+        r.publish("uai:events:security_alert", json.dumps(message))
+        log.warning(f"🚨 UAI → CIPHER: {symbol} flagged {len(risk_flags)} risk flags")
+    except Exception as e:
+        log.error(f"UAI security alert publish failed: {e}")
+
+
+def _publish_social_signal(mint: str, symbol: str, social_score: float):
+    """
+    Publish NOVA social velocity score to UAI channel.
+    Subscribers: SENTINEL (for scoring), AXIOM (for risk analysis).
+    """
+    r = get_redis()
+    if r is None:
+        return
+
+    message = {
+        "id": f"soc-{datetime.now(timezone.utc).timestamp()}",
+        "from": "nova",
+        "to": "broadcast",
+        "intent": "social.sentiment",
+        "priority": "medium",
+        "payload": {
+            "mint": mint,
+            "symbol": symbol,
+            "social_score": social_score,
+            "source": "nova_scanner",
+            "ts": datetime.now(timezone.utc).isoformat(),
+        },
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "ttl": 600,  # 10 min for social scores
+    }
+
+    try:
+        r.publish("uai:events:social_signal", json.dumps(message))
+        log.info(f"📊 UAI → NOVA social: {symbol} = {social_score:.0f}")
+    except Exception as e:
+        log.error(f"UAI social signal publish failed: {e}")
+
+
 def get_axiom_score(mint: str) -> dict:
     """
     Get AXIOM's latest risk score for a mint.
@@ -145,7 +216,7 @@ def get_axiom_score(mint: str) -> dict:
 # ── UAI: Listen for AXIOM responses ─────────────────────────────────────────
 
 def _start_uai_listener():
-    """Background thread to listen for AXIOM responses."""
+    """Background thread to listen for AXIOM + NOVA responses."""
     import threading
     r = get_redis()
     if r is None:
@@ -154,26 +225,46 @@ def _start_uai_listener():
 
     def listener():
         pubsub = r.pubsub()
-        pubsub.subscribe("uai:events:token_signal")
-        log.info("🔊 UAI listener started — listening for AXIOM responses")
+        # Subscribe to all UAI channels
+        pubsub.subscribe(
+            "uai:events:token_signal",
+            "uai:events:social_signal", 
+            "uai:events:security_alert"
+        )
+        log.info("🔊 UAI listener started — listening for AXIOM + NOVA responses")
 
         for msg in pubsub.listen():
             if msg["type"] == "message":
                 try:
                     data = json.loads(msg["data"])
-                    # Only process responses to our signals
-                    if data.get("intent", "").endswith(".response") and data.get("to") == "sentinel":
-                        payload = data.get("payload", {})
-                        mint = payload.get("mint", "")
-                        if mint:
-                            # Store AXIOM score in Redis with 5-min TTL
-                            key = f"axiom:score:{mint}"
-                            r.setex(key, 300, json.dumps({
-                                "score": payload.get("axiom_score", 0),
-                                "recommendation": payload.get("recommendation", "UNKNOWN"),
-                                "confidence": payload.get("confidence", 0),
-                            }))
-                            log.info(f"📥 AXIOM response stored for {mint[:12]}...: {payload.get('recommendation')}")
+                    channel = msg["channel"]
+
+                    # AXIOM responses
+                    if channel == "uai:events:token_signal":
+                        if data.get("intent", "").endswith(".response") and data.get("to") == "sentinel":
+                            payload = data.get("payload", {})
+                            mint = payload.get("mint", "")
+                            if mint:
+                                key = f"axiom:score:{mint}"
+                                r.setex(key, 300, json.dumps({
+                                    "score": payload.get("axiom_score", 0),
+                                    "recommendation": payload.get("recommendation", "UNKNOWN"),
+                                    "confidence": payload.get("confidence", 0),
+                                }))
+                                log.info(f"📥 AXIOM response stored for {mint[:12]}...: {payload.get('recommendation')}")
+
+                    # NOVA social signals
+                    elif channel == "uai:events:social_signal":
+                        if data.get("intent") == "social.sentiment":
+                            payload = data.get("payload", {})
+                            mint = payload.get("mint", "")
+                            score = payload.get("social_score", 0)
+                            if mint and score > 0:
+                                # Store in Redis for SENTINEL scoring
+                                key = f"nova:social:{mint}"
+                                r.setex(key, 300, str(score))
+                                log.info(f"📊 NOVA social score stored for {mint[:12]}...: {score:.0f}")
+
                 except Exception as e:
                     log.error(f"UAI listener error: {e}")
 
@@ -377,6 +468,10 @@ async def listen_forever():
 
                         # ── Phase 3: UAI → AXIOM pilot ─────────────────────────
                         _publish_uai_signal(payload, social_score, score=0)
+                        
+                        # ── Phase 4: Security alert to CIPHER (if risk flags present)
+                        # Note: Risk flags computed in Celery task, but we can also
+                        # do a quick local check for high-priority alerts
                     else:
                         # Fallback: just log (for local dev without Celery)
                         log.info(f"[LOG-ONLY] {payload['symbol']} payload={json.dumps(payload)[:200]}")
