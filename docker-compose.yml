@@ -1,38 +1,192 @@
-version: '3.8'
+version: "3.9"
 
-services:
-  sentinel-mvp:
-    build:
-      context: .
-      dockerfile: Dockerfile.mvp
-    container_name: sentinel-mvp
-    env_file:
-      - .env
-    environment:
-      - DB_PATH=/app/data/sentinel.db
-      - POLL_INTERVAL=300
-    volumes:
-      - sentinel_data:/app/data
-    # F-09: Resource limits
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: '0.5'
-        reservations:
-          memory: 128M
-          cpus: '0.25'
-    # F-10: Security hardening
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import sqlite3; sqlite3.connect('/app/data/sentinel.db')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+# ─────────────────────────────────────────────────────────
+# SENTINEL Phase 2 — Full Stack
+# LiQUiD SOUND | CTO: Captain Urahara
+# ─────────────────────────────────────────────────────────
+# Services:
+#   sentinel       — WebSocket listener (Phase 1 core)
+#   celery-worker  — Token scoring + alert routing
+#   celery-beat    — Scheduled tasks (NOVA scans, health)
+#   redis          — Broker + cache (local dev only)
+#   timescaledb    — Time-series token event storage
+#
+# Production note:
+#   Redis → use Railway instance (interchange.proxy.rlwy.net:56657)
+#   Set REDIS_URL in .env to override local redis service
+
+networks:
+  sentinel_net:
+    driver: bridge
 
 volumes:
-  sentinel_data:
+  timescale_data:
+    driver: local
+
+services:
+
+  # ──────────────────────────────
+  # SENTINEL Listener (Phase 1 core)
+  # ──────────────────────────────
+  sentinel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinel-listener
+    command: python sentinel_ph2.py
+    env_file: .env
+    environment:
+      - SERVICE_NAME=sentinel-listener
+    depends_on:
+      redis:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - sentinel_net
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ──────────────────────────────
+  # Celery Worker
+  # ──────────────────────────────
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinel-celery-worker
+    command: celery -A tasks worker --loglevel=info --concurrency=4 -Q sentinel,nova,alerts
+    env_file: .env
+    environment:
+      - SERVICE_NAME=celery-worker
+    depends_on:
+      redis:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - sentinel_net
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ──────────────────────────────
+  # Celery Beat (Scheduler)
+  # ──────────────────────────────
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinel-celery-beat
+    command: celery -A tasks beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file: .env
+    environment:
+      - SERVICE_NAME=celery-beat
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - sentinel_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ──────────────────────────────
+  # Flower (Celery monitoring UI)
+  # ──────────────────────────────
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinel-flower
+    command: celery -A tasks flower --port=5555 --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-sentinel}
+    env_file: .env
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - sentinel_net
+    profiles:
+      - monitoring
+
+  # ──────────────────────────────
+  # Redis (local dev broker)
+  # In production: use Railway REDIS_URL in .env
+  # ──────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: sentinel-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - sentinel_net
+    profiles:
+      - local   # Only start local redis when using 'local' profile
+                # In prod, use Railway Redis via REDIS_URL env var
+
+  # ──────────────────────────────
+  # TimescaleDB (time-series storage)
+  # ──────────────────────────────
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: sentinel-timescaledb
+    environment:
+      POSTGRES_DB: ${TIMESCALEDB_DB:-sentinel}
+      POSTGRES_USER: ${TIMESCALEDB_USER:-sentinel}
+      POSTGRES_PASSWORD: ${TIMESCALEDB_PASSWORD:-changeme_in_prod}
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TIMESCALEDB_USER:-sentinel} -d ${TIMESCALEDB_DB:-sentinel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - sentinel_net
+
+# ─────────────────────────────────────────────────────────
+# Usage:
+#   Local dev (with local Redis):
+#     docker-compose --profile local up -d
+#
+#   Production (Railway Redis in .env):
+#     docker-compose up -d
+#
+#   With monitoring UI:
+#     docker-compose --profile monitoring up -d
+#
+#   Verify:
+#     docker-compose ps
+#     docker-compose logs -f sentinel
+#     docker-compose logs -f celery-worker
+# ─────────────────────────────────────────────────────────

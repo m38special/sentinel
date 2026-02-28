@@ -1,0 +1,39 @@
+# SENTINEL Phase 2 — Python Dependencies
+# LiQUiD SOUND | CTO: Captain Urahara
+
+# ── Core WebSocket (Phase 1) ──────────────────────────────
+websockets==12.0
+
+# ── Task Queue ───────────────────────────────────────────
+celery[redis]==5.3.6
+redis==5.0.3
+
+# ── Database ─────────────────────────────────────────────
+psycopg2-binary==2.9.9
+SQLAlchemy==2.0.27
+alembic==1.13.1              # DB migrations
+
+# ── Scraping (NOVA) ──────────────────────────────────────
+scrapling==0.2.9
+playwright==1.42.0           # StealthyFetcher backend
+
+# ── HTTP ─────────────────────────────────────────────────
+aiohttp==3.9.3
+httpx==0.27.0                # sync + async HTTP client
+
+# ── Config ───────────────────────────────────────────────
+python-dotenv==1.0.1
+pydantic==2.6.3              # data validation + settings
+pydantic-settings==2.2.1
+
+# ── Logging ──────────────────────────────────────────────
+structlog==24.1.0
+
+# ── Monitoring ───────────────────────────────────────────
+flower==2.0.1                # Celery UI
+prometheus-client==0.20.0
+
+# ── Utilities ────────────────────────────────────────────
+python-dateutil==2.9.0
+ujson==5.9.0                 # fast JSON
+tenacity==8.2.3              # retry logic
