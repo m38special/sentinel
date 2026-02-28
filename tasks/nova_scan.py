@@ -183,3 +183,72 @@ def _publish_social_signal(token_name: str, token_symbol: str, social_score: flo
         log.info(f"📊 UAI → NOVA social: {token_symbol} = {social_score:.0f}")
     except Exception as e:
         log.warning("nova_social_publish_failed", error=str(e))
+
+
+# ─────────────────────────────────────────────
+# Phase 5: Content Approval — Auto-post
+# ─────────────────────────────────────────────
+
+@app.task(
+    name="tasks.nova_scan.post_approved_content",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=30,
+    queue="nova",
+)
+def post_approved_content(self, draft: dict):
+    """
+    Auto-post approved content to social media.
+    Triggered by content_approval.approve_content.
+    """
+    content_type = draft.get("type", "general")
+    title = draft.get("title", "")
+    body = draft.get("body", "")
+    token_symbol = draft.get("token_symbol", "")
+    
+    # Format post based on content type
+    if content_type == "token_alert":
+        post_text = f"🚀 NEW ALERT: {token_symbol}\n\n{title}\n\n{body}"
+    elif content_type == "thread":
+        post_text = f"🧵 {title}\n\n{body}"
+    else:
+        post_text = f"{title}\n\n{body}"
+    
+    # In production, this would post to Twitter/X, Telegram, etc.
+    # For now, publish to UAI for NOVA to pick up
+    import redis as redis_lib
+    import os
+    import json
+    from datetime import datetime, timezone
+    
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    
+    try:
+        r = redis_lib.from_url(REDIS_URL, decode_responses=True)
+        
+        message = {
+            "id": f"post-{datetime.now(timezone.utc).timestamp()}",
+            "from": "nova",
+            "to": "broadcast",
+            "intent": "social.post",
+            "priority": "high",
+            "payload": {
+                "draft_id": draft.get("id"),
+                "content_type": content_type,
+                "post_text": post_text,
+                "token_symbol": token_symbol,
+                "approved_by": draft.get("approved_by"),
+                "ts": datetime.now(timezone.utc).isoformat(),
+            },
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "ttl": 300,
+        }
+        
+        r.publish("uai:events:social_signal", json.dumps(message))
+        log.info(f"📱 NOVA auto-post queued: {title[:30]}...")
+        
+        return {"status": "posted", "draft_id": draft.get("id")}
+        
+    except Exception as e:
+        log.error("nova_post_failed", error=str(e))
+        raise self.retry(exc=e)
