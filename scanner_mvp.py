@@ -32,6 +32,7 @@ PUMP_API_KEY = os.getenv('PUMP_API_KEY', '')
 MIN_MARKET_CAP_SOL = float(os.getenv('MIN_MARKET_CAP_SOL', '0'))
 HIGH_MARKET_CAP_SOL = float(os.getenv('HIGH_MARKET_CAP_SOL', '100'))    # ~$15k USD at $150/SOL
 MEDIUM_MARKET_CAP_SOL = float(os.getenv('MEDIUM_MARKET_CAP_SOL', '10')) # ~$1.5k USD
+MIN_VOLUME_USD = float(os.getenv('MIN_VOLUME_USD', '10000'))             # Minimum 24h volume in USD
 
 SOL_USD_ESTIMATE = 150.0  # Rough estimate for display only
 
@@ -297,6 +298,15 @@ async def listen_forever():
                         # FIX-02: Market cap is in SOL, not USD
                         market_cap_sol = token.get('marketCapSol', 0) or 0
                         if market_cap_sol < MIN_MARKET_CAP_SOL:
+                            continue
+
+                        # Volume filter: require minimum $10k USD volume (24h)
+                        # PumpPortal provides volume in SOL via vSolInBondingCurve proxy
+                        # Use initialBuy * SOL_USD_ESTIMATE as volume signal for new tokens
+                        initial_buy_sol = token.get('initialBuy', 0) or 0
+                        volume_usd_est = (token.get('vSolInBondingCurve', 0) or 0) * SOL_USD_ESTIMATE
+                        if volume_usd_est < MIN_VOLUME_USD:
+                            logger.debug(f"Token filtered: volume ${volume_usd_est:,.0f} < ${MIN_VOLUME_USD:,.0f} min")
                             continue
 
                         risk_score, risk_level = calculate_risk(token)
