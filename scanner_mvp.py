@@ -211,7 +211,7 @@ Pump.fun: https://pump.fun/{signal.mint}""".strip()
 
 def send_alerts(db: SentinelDB):
     """Atomic alert — mark sent BEFORE sending to prevent duplicates."""
-    from alerts import send_slack_alert, send_telegram_alert
+    from alerts import send_slack_alert  # Slack-only
 
     conn = sqlite3.connect(db.db_path)
     conn.row_factory = sqlite3.Row
@@ -248,7 +248,7 @@ def send_alerts(db: SentinelDB):
             )
             message = format_alert(signal)
             send_slack_alert(message)
-            send_telegram_alert(message)
+            # send_telegram_alert(message)  # Disabled - Slack-only
 
     except Exception as e:
         logger.error(f"Alert error: {e}")
