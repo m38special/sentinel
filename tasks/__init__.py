@@ -50,7 +50,6 @@ app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     task_reject_on_worker_lost=True,
-    task_max_retries=3,
 
     # Beat schedule (periodic tasks)
     beat_schedule={

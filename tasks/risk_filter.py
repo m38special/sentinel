@@ -5,9 +5,7 @@ SENTINEL Phase 2 | LiQUiD SOUND
 Returns a list of risk flags for a token.
 Each flag reduces the composite score by 10 pts (in score_token.py).
 """
-import logging
 import structlog
-from celery import shared_task
 from tasks import app
 
 log = structlog.get_logger(__name__)
@@ -79,10 +77,18 @@ def check_rug_indicators(token_data: dict) -> list[str]:
     if token_data.get("metadataFrozen", False):
         flags.append("frozen_metadata")
 
-    # Copycat name detection (basic)
+    # Copycat name detection — word-boundary matching (FIND-13: old substrings caused false positives)
+    import re as _re
     name = (token_data.get("name", "") or "").lower()
-    scam_patterns = ["official", "2.0", "v2", "real", "new", "legit"]
-    if any(p in name for p in scam_patterns):
+    SCAM_WORD_PATTERNS = [
+        r"\bofficial\b",   # "official" not "unofficially"
+        r"\blegit\b",      # "legit" not "legitimate"
+        r"\breal\b",       # "real" not "realty"
+        r"\bv2\b",         # "v2" as standalone
+        r"\b2\.0\b",      # "2.0" as standalone
+        r"\bnew\s+\w+\b", # "new shiba" pattern
+    ]
+    if any(_re.search(p, name) for p in SCAM_WORD_PATTERNS):
         flags.append("copycat_name")
 
     if flags:

@@ -7,7 +7,6 @@ Uses SQLAlchemy with connection pooling.
 """
 import os
 import json
-import logging
 import structlog
 from datetime import datetime, timezone
 from typing import Any

@@ -8,9 +8,7 @@ Scores incoming token events 0–100 using:
   - Risk flags (rug indicators)
   - Timing signals (age, migration status)
 """
-import logging
 import structlog
-from celery import shared_task
 from typing import Any
 
 from tasks import app
@@ -79,9 +77,10 @@ def compute_score(token_data: dict, social_score: float = 0.0) -> dict:
     liquidity_sol = token_data.get("vSolInBondingCurve", 0) or token_data.get("liquidity_sol", 0)
     components["liquidity"] = _tier_score(liquidity_sol, LIQ_TIERS)
 
-    # Volume score (normalize to 0–100)
-    volume = token_data.get("volume", 0) or 0
-    components["volume"] = min(volume / 1000 * 100, 100)
+    # Volume score — SOL-based tiers (FIND-14: USD proxy was always 100 for any token >6.67 SOL)
+    VOLUME_TIERS = [(100, 100), (50, 80), (20, 60), (10, 40), (5, 20), (0, 10)]
+    volume_sol = token_data.get("vSolInBondingCurve", 0) or token_data.get("volume_sol", 0) or 0
+    components["volume"] = _tier_score(volume_sol, VOLUME_TIERS)
 
     # Holder score
     holders = token_data.get("holders", 0) or 0
@@ -184,9 +183,14 @@ def score_and_route(self, token_data: dict[str, Any], social_score: float = 0.0)
 
         return {"mint": mint, "score": score, "status": "processed"}
 
-    except Exception as exc:
-        log.error("score_task_failed", mint=token_data.get("mint"), error=str(exc))
+    except (OSError, ConnectionError, TimeoutError) as exc:
+        # Transient: network/DB blip — safe to retry
+        log.warning("score_task_transient_error", mint=token_data.get("mint"), error=str(exc))
         raise self.retry(exc=exc)
+    except Exception as exc:
+        # Non-transient: logic/data error — fail fast, no retry
+        log.error("score_task_failed", mint=token_data.get("mint"), error=str(exc), exc_info=True)
+        raise  # let Celery mark as FAILURE
 
 
 @app.task(name="tasks.score_token.health_check", queue="sentinel")

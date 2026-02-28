@@ -6,7 +6,6 @@ Periodic Celery tasks that trigger NOVA social scans
 and store results to TimescaleDB.
 Beat schedule: every 15 minutes (configured in tasks/__init__.py)
 """
-import logging
 import structlog
 import json
 from pathlib import Path
@@ -42,7 +41,7 @@ def full_social_scan(self):
         nova = NOVAScraper(headless=True)
 
         log.info("nova_full_scan_start")
-        result = asyncio.run(nova.full_scan())
+        result = asyncio.run(nova.full_scan())  # FIND-10: requires prefork pool (not gevent/eventlet)
 
         # Store to TimescaleDB
         _store_nova_scan(result, "full", [])
@@ -86,7 +85,7 @@ def targeted_token_scan(self, token_name: str, token_symbol: str) -> dict:
     import asyncio
     try:
         from nova_scraper import sentinel_social_check
-        result = asyncio.run(sentinel_social_check(token_name, token_symbol))
+        result = asyncio.run(sentinel_social_check(token_name, token_symbol))  # FIND-10: prefork pool required
 
         # Store scan record
         _store_nova_scan(
@@ -136,7 +135,9 @@ def _store_nova_scan(result: dict, scan_type: str, keywords: list):
                     "keywords": keywords,
                     "results_count": total,
                     "duration": result.get("scan_duration_s", 0),
-                    "raw_data": _json.dumps(result)[:10000],  # cap at 10KB
+                    "raw_data": (lambda j: j if len(j) <= 10000 else _json.dumps(
+                        {"_truncated": True, "scan_type": scan_type, "duration": result.get("scan_duration_s")}
+                    ))(_json.dumps(result)),  # FIND-12: safe truncation (no mid-JSON cuts)
                 }
             )
             conn.commit()

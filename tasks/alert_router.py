@@ -16,7 +16,6 @@ Approval gate:
 """
 import os
 import json
-import logging
 import structlog
 from datetime import datetime, timezone
 from typing import Any
@@ -155,7 +154,7 @@ def _format_slack_message(token: dict, score: float) -> dict:
         {
             "type": "context",
             "elements": [
-                {"type": "mrkdwn", "text": f"Mint: `{mint[:20]}...`  |  <{pump_url}|Pump.fun>  |  {datetime.now(timezone.utc).strftime('%H:%M UTC')}"}
+                {"type": "mrkdwn", "text": f"Mint: `{mint[:20] + ('...' if len(mint) > 20 else '')} `  |  <{pump_url}|Pump.fun>  |  {datetime.now(timezone.utc).strftime('%H:%M UTC')}"}
             ]
         },
         *gate_block,
