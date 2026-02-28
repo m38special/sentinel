@@ -80,6 +80,49 @@ def get_nova_social_score(mint: str) -> float:
         return 0.0
 
 
+# ── UAI: Publish to AXIOM ───────────────────────────────────────────────────
+
+def _publish_uai_signal(token_data: dict, social_score: float, score: float):
+    """
+    Publish token signal to AXIOM via UAI channel.
+    AXIOM subscribes to uai:events:token_signal.
+    """
+    r = get_redis()
+    if r is None:
+        log.warning("UAI: Redis not available, skipping AXIOM signal")
+        return
+
+    mint = token_data.get("mint", "")
+    symbol = token_data.get("symbol", "???")
+
+    message = {
+        "id": f"sig-{datetime.now(timezone.utc).timestamp()}",
+        "from": "sentinel",
+        "to": "axiom",
+        "intent": "analyze.market_signal",
+        "priority": "high" if score >= 85 else "medium",
+        "payload": {
+            "symbol": symbol,
+            "name": token_data.get("name", "Unknown"),
+            "mint": mint,
+            "market_cap_sol": token_data.get("marketCapSol", 0),
+            "liquidity_sol": token_data.get("liquidity_sol", 0),
+            "social_score": social_score,
+            "sentinel_score": score,
+            "risk_flags": token_data.get("risk_flags", []),
+            "detected_at": token_data.get("detected_at"),
+        },
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "ttl": 300,
+    }
+
+    try:
+        r.publish("uai:events:token_signal", json.dumps(message))
+        log.info(f"📡 UAI → AXIOM: {symbol} ({mint[:12]}...)")
+    except Exception as e:
+        log.error(f"UAI publish failed: {e}")
+
+
 # ── Token Validation ─────────────────────────────────────────────────────────
 
 def validate_token(token: dict) -> bool:
@@ -264,6 +307,9 @@ async def listen_forever():
                         # ── Wave 3: Dispatch to Celery pipeline ────────────────
                         task = score_and_route.delay(payload, social_score)
                         log.info(f"✅ Dispatched {mint[:12]}... → task_id={task.id}")
+
+                        # ── Phase 3: UAI → AXIOM pilot ─────────────────────────
+                        _publish_uai_signal(payload, social_score, score=0)
                     else:
                         # Fallback: just log (for local dev without Celery)
                         log.info(f"[LOG-ONLY] {payload['symbol']} payload={json.dumps(payload)[:200]}")
