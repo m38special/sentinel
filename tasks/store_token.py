@@ -114,33 +114,35 @@ def persist_to_timescaledb(self, token_data: dict[str, Any]):
     queue="sentinel",
 )
 def record_alert(self, token: dict[str, Any], score: float, channels: list[str]):
-    """Record alert delivery to TimescaleDB."""
+    """Record alert delivery to TimescaleDB. Reuses single connection."""
     mint   = token.get("mint", "")
     symbol = token.get("symbol", "")
 
     try:
         engine = get_engine()
 
-        for channel in channels:
-            insert_sql = text("""
-                INSERT INTO alerts (
-                    time, mint, symbol, alert_type, score,
-                    channel, delivered_at
-                ) VALUES (
-                    NOW(), :mint, :symbol, :alert_type, :score,
-                    :channel, NOW()
-                )
-            """)
-            params = {
-                "mint":       mint,
-                "symbol":     symbol,
-                "alert_type": "high_score",
-                "score":      score,
-                "channel":    channel,
-            }
-            with engine.connect() as conn:
+        # Single connection for all channels
+        with engine.connect() as conn:
+            for channel in channels:
+                insert_sql = text("""
+                    INSERT INTO alerts (
+                        time, mint, symbol, alert_type, score,
+                        channel, delivered_at
+                    ) VALUES (
+                        NOW(), :mint, :symbol, :alert_type, :score,
+                        :channel, NOW()
+                    )
+                """)
+                params = {
+                    "mint":       mint,
+                    "symbol":     symbol,
+                    "alert_type": "high_score",
+                    "score":      score,
+                    "channel":    channel,
+                }
                 conn.execute(insert_sql, params)
-                conn.commit()
+            # Single commit for all inserts
+            conn.commit()
 
         log.info("alert_recorded", mint=mint, channels=channels)
         return {"status": "recorded", "mint": mint, "channels": channels}

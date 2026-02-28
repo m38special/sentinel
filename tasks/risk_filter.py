@@ -103,7 +103,3 @@ def check_rug_indicators(token_data: dict) -> list[str]:
 def check_rug_indicators_task(token_data: dict) -> list[str]:
     """Async Celery wrapper for rug indicator check."""
     return check_rug_indicators(token_data)
-
-
-# Attach sync method to task for use in score_token.run()
-check_rug_indicators_task.run = check_rug_indicators

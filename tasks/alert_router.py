@@ -33,6 +33,7 @@ REDIS_URL           = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 SLACK_BOT_TOKEN     = os.getenv("SLACK_BOT_TOKEN", "")
 SLACK_ALERT_CHANNEL = os.getenv("SLACK_ALERT_CHANNEL", "C0AHE2LQFRC")
 DEDUP_TTL_SECONDS   = 300   # 5 min dedup window
+IN_FLIGHT_TTL_SECONDS = 30   # short lock for in-flight processing
 
 THRESHOLD_SLACK     = float(os.getenv("ALERT_THRESHOLD_SLACK", "70"))
 THRESHOLD_ALL       = float(os.getenv("ALERT_THRESHOLD_ALL_CHANNELS", "85"))
@@ -50,15 +51,27 @@ def get_redis():
     return _redis
 
 
-def is_duplicate(mint: str, score: float) -> bool:
-    """Check if we already alerted on this token recently."""
-    key = f"sentinel:alert:dedup:{mint}"
+def try_acquire_in_flight(mint: str) -> bool:
+    """
+    Acquire a short in-flight lock for processing.
+    Returns True if acquired (we should process), False if already in-flight.
+    """
+    key = f"sentinel:alert:inflight:{mint}"
     r = get_redis()
-    if r.exists(key):
-        log.debug("alert_dedup_skip", mint=mint)
-        return True
-    r.setex(key, DEDUP_TTL_SECONDS, str(round(score, 2)))
-    return False
+    # Atomic SET NX EX — only acquires if not already processing
+    return r.set(key, "1", ex=IN_FLIGHT_TTL_SECONDS, nx=True) is not None
+
+
+def release_in_flight_and_set_dedup(mint: str, score: float) -> None:
+    """
+    Release in-flight lock and set long-TTL dedup key.
+    Called only after confirmed delivery success.
+    """
+    r = get_redis()
+    # Remove in-flight lock
+    r.delete(f"sentinel:alert:inflight:{mint}")
+    # Set long dedup key
+    r.setex(f"sentinel:alert:dedup:{mint}", DEDUP_TTL_SECONDS, str(round(score, 2)))
 
 
 # ─────────────────────────────────────────────
@@ -160,10 +173,13 @@ def _format_slack_message(token: dict, score: float) -> dict:
 # ─────────────────────────────────────────────
 
 def _send_slack(payload: dict) -> bool:
-    """Send Slack message via Web API."""
+    """
+    Send Slack message via Web API.
+    Raises RuntimeError on failure so Celery can retry.
+    """
     if not SLACK_BOT_TOKEN:
         log.warning("slack_token_missing")
-        return False
+        raise RuntimeError("SLACK_BOT_TOKEN not configured")
 
     import urllib.request
     data = json.dumps(payload).encode("utf-8")
@@ -183,11 +199,15 @@ def _send_slack(payload: dict) -> bool:
                 log.info("slack_alert_sent", channel=payload.get("channel"))
                 return True
             else:
-                log.error("slack_api_error", error=result.get("error"))
-                return False
+                error_msg = result.get("error", "unknown")
+                log.error("slack_api_error", error=error_msg)
+                raise RuntimeError(f"Slack API error: {error_msg}")
+    except urllib.error.URLError as e:
+        log.error("slack_network_error", error=str(e))
+        raise RuntimeError(f"Slack network error: {e}")
     except Exception as e:
         log.error("slack_send_failed", error=str(e))
-        return False
+        raise RuntimeError(f"Slack send failed: {e}")
 
 
 # ─────────────────────────────────────────────
@@ -204,23 +224,36 @@ def _send_slack(payload: dict) -> bool:
 def route_alert(self, token: dict[str, Any], score: float):
     """
     Route alert to appropriate channels based on score threshold.
-    Deduplicates within DEDUP_TTL_SECONDS window.
+    Uses in-flight lock pattern to allow retry on transient failures
+    without losing alerts or creating duplicates.
+    
+    Threshold check is owned by this function (not score_and_route)
+    to avoid split-brain between worker pools.
     """
     mint   = token.get("mint", "unknown")
     symbol = token.get("symbol", "???")
 
-    try:
-        # Dedup check
-        if is_duplicate(mint, score):
-            return {"status": "deduped", "mint": mint}
+    # Threshold check — owned by route_alert
+    if score < THRESHOLD_SLACK:
+        return {"status": "below_threshold", "mint": mint, "score": score, "threshold": THRESHOLD_SLACK}
 
+    # Check for existing completed alert (long TTL dedup)
+    r = get_redis()
+    if r.exists(f"sentinel:alert:dedup:{mint}"):
+        return {"status": "deduped", "mint": mint}
+
+    # Try to acquire in-flight lock (short TTL)
+    if not try_acquire_in_flight(mint):
+        return {"status": "in_flight", "mint": mint}
+
+    try:
         channels_hit = []
 
         # Slack (≥ 70)
         if score >= THRESHOLD_SLACK:
             payload = _format_slack_message(token, score)
-            if _send_slack(payload):
-                channels_hit.append("slack")
+            _send_slack(payload)  # raises on failure → triggers retry
+            channels_hit.append("slack")
 
         # Future: Discord (≥ 85), Telegram (≥ 95)
         # if score >= THRESHOLD_ALL:
@@ -234,9 +267,26 @@ def route_alert(self, token: dict[str, Any], score: float):
         from tasks.store_token import record_alert
         record_alert.delay(token, score, channels_hit)
 
+        # Release in-flight lock and set long-TTL dedup key
+        release_in_flight_and_set_dedup(mint, score)
+
         log.info("alert_routed", mint=mint, symbol=symbol, score=score, channels=channels_hit)
         return {"status": "delivered", "mint": mint, "channels": channels_hit}
 
     except Exception as exc:
-        log.error("alert_routing_failed", mint=mint, error=str(exc))
-        raise self.retry(exc=exc)
+        # Release in-flight lock on failure so retry can proceed
+        r.delete(f"sentinel:alert:inflight:{mint}")
+        
+        # Only retry on transient errors, not logic bugs
+        transient_errors = (
+            RuntimeError,           # Slack/API failures
+            ConnectionError,        # Network issues
+            TimeoutError,           # Timeouts
+        )
+        if isinstance(exc, transient_errors):
+            log.error("alert_routing_transient_failure", mint=mint, error=str(exc))
+            raise self.retry(exc=exc)
+        else:
+            # Non-transient: log and don't retry (would loop forever)
+            log.error("alert_routing_permanent_failure", mint=mint, error=str(exc))
+            return {"status": "failed", "mint": mint, "error": str(exc)}

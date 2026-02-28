@@ -178,13 +178,9 @@ def score_and_route(self, token_data: dict[str, Any], social_score: float = 0.0)
         # 3. Store to TimescaleDB (always)
         persist_to_timescaledb.delay(enriched)
 
-        # 4. Route alert if score meets threshold
-        import os
-        threshold = float(os.getenv("ALERT_THRESHOLD_SLACK", "70"))
-        if score >= threshold:
-            route_alert.delay(enriched, score)
-        else:
-            log.info("below_threshold", mint=mint, score=score, threshold=threshold)
+        # 4. Route alert — threshold check happens inside route_alert
+        # Let route_alert own all threshold logic (avoids split-brain)
+        route_alert.delay(enriched, score)
 
         return {"mint": mint, "score": score, "status": "processed"}
 

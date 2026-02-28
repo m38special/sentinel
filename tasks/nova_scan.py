@@ -9,10 +9,12 @@ Beat schedule: every 15 minutes (configured in tasks/__init__.py)
 import logging
 import structlog
 import json
-import sys
-import os
+from pathlib import Path
 
-sys.path.insert(0, "/workspace")  # so we can import nova_scraper
+# Resolve nova_scraper relative to this file (works in dev + Docker)
+_nova_scraper_path = Path(__file__).resolve().parent.parent
+if str(_nova_scraper_path) not in sys.path:
+    sys.path.insert(0, str(_nova_scraper_path))
 
 from tasks import app
 
@@ -107,16 +109,13 @@ def targeted_token_scan(self, token_name: str, token_symbol: str) -> dict:
 
 
 def _store_nova_scan(result: dict, scan_type: str, keywords: list):
-    """Store NOVA scan results to TimescaleDB."""
+    """Store NOVA scan results to TimescaleDB. Reuses engine from store_token."""
     try:
-        from sqlalchemy import create_engine, text
+        from tasks.store_token import get_engine
+        from sqlalchemy import text
         import json as _json
 
-        db_url = os.getenv(
-            "TIMESCALEDB_URL",
-            "postgresql://sentinel:changeme_in_prod@localhost:5432/sentinel"
-        )
-        engine = create_engine(db_url, pool_pre_ping=True)
+        engine = get_engine()
 
         platform = result.get("nova_scan", {})
         total = sum(

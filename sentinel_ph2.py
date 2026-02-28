@@ -166,15 +166,17 @@ def build_token_payload(raw: dict, metadata: dict) -> dict:
 SEEN_TTL = 300  # seconds
 
 def is_seen(mint: str) -> bool:
-    """Returns True if we already dispatched this mint in the last 5 min."""
+    """
+    Returns True if we already dispatched this mint in the last 5 min.
+    Uses atomic SET NX EX to prevent TOCTOU race in parallel listeners.
+    """
     r = get_redis()
     if r is None:
         return False  # can't dedup without Redis; allow through
     key = f"sentinel:seen:{mint}"
-    if r.exists(key):
-        return True
-    r.setex(key, SEEN_TTL, "1")
-    return False
+    # Atomic SET NX EX — only sets if key doesn't exist
+    was_set = r.set(key, "1", ex=SEEN_TTL, nx=True)
+    return not was_set  # True if we didn't set (already existed)
 
 
 # ── Graceful Shutdown ─────────────────────────────────────────────────────────
