@@ -22,7 +22,8 @@ PUMP_WS_URL = os.getenv('PUMP_WS_URL', 'wss://pumpportal.fun/api/data')
 PUMP_API_KEY = os.getenv('PUMP_API_KEY', '')
 NETWORK = 'solana'
 
-MIN_MARKET_CAP = 10_000
+# BUG-02: Lower threshold to catch new launches
+MIN_MARKET_CAP = 0
 HIGH_MARKET_CAP = 500_000
 MEDIUM_MARKET_CAP = 50_000
 
