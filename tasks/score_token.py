@@ -51,6 +51,24 @@ HOLDER_TIERS = [
     (0,    5),
 ]
 
+# AXIOM recommendation score multipliers (Phase 4)
+AXIOM_MULTIPLIERS = {
+    "STRONG_BUY": 0.85,  # AXIOM says buy → lower our score (less risky)
+    "BUY": 0.95,
+    "HOLD": 1.0,
+    "SELL": 1.15,        # AXIOM says sell → higher our score (more risky)
+    "UNKNOWN": 1.0,
+}
+
+# AXIOM recommendation score multipliers
+AXIOM_MULTIPLIERS = {
+    "STRONG_BUY": 0.85,
+    "BUY": 0.95,
+    "HOLD": 1.0,
+    "SELL": 1.15,
+    "UNKNOWN": 1.0,
+}
+
 
 def _tier_score(value: float, tiers: list[tuple]) -> float:
     """Map a value to a score using threshold tiers."""
@@ -117,7 +135,12 @@ def compute_score(token_data: dict, social_score: float = 0.0) -> dict:
 
     # Rug penalty: each flag reduces score by 10 pts
     rug_penalty = len(risk_flags) * 10
-    final_score = max(0.0, min(100.0, score - rug_penalty))
+
+    # AXIOM feedback: adjust score based on AXIOM recommendation (Phase 4)
+    axiom_rec = token_data.get("axiom_recommendation", "UNKNOWN")
+    axiom_mult = AXIOM_MULTIPLIERS.get(axiom_rec, 1.0)
+
+    final_score = max(0.0, min(100.0, (score - rug_penalty) * axiom_mult))
 
     log.info(
         "token_scored",
@@ -126,6 +149,8 @@ def compute_score(token_data: dict, social_score: float = 0.0) -> dict:
         score=round(final_score, 2),
         components=components,
         risk_flags=risk_flags,
+        axiom_rec=axiom_rec,
+        axiom_mult=axiom_mult,
     )
 
     return {

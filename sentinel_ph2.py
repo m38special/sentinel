@@ -123,6 +123,65 @@ def _publish_uai_signal(token_data: dict, social_score: float, score: float):
         log.error(f"UAI publish failed: {e}")
 
 
+def get_axiom_score(mint: str) -> dict:
+    """
+    Get AXIOM's latest risk score for a mint.
+    Returns axiom_score, recommendation, confidence or zeros if not available.
+    """
+    r = get_redis()
+    if r is None:
+        return {"score": 0, "recommendation": "UNKNOWN", "confidence": 0}
+
+    try:
+        key = f"axiom:score:{mint}"
+        data = r.get(key)
+        if data:
+            return json.loads(data)
+    except Exception:
+        pass
+    return {"score": 0, "recommendation": "UNKNOWN", "confidence": 0}
+
+
+# ── UAI: Listen for AXIOM responses ─────────────────────────────────────────
+
+def _start_uai_listener():
+    """Background thread to listen for AXIOM responses."""
+    import threading
+    r = get_redis()
+    if r is None:
+        log.warning("UAI listener: Redis not available")
+        return
+
+    def listener():
+        pubsub = r.pubsub()
+        pubsub.subscribe("uai:events:token_signal")
+        log.info("🔊 UAI listener started — listening for AXIOM responses")
+
+        for msg in pubsub.listen():
+            if msg["type"] == "message":
+                try:
+                    data = json.loads(msg["data"])
+                    # Only process responses to our signals
+                    if data.get("intent", "").endswith(".response") and data.get("to") == "sentinel":
+                        payload = data.get("payload", {})
+                        mint = payload.get("mint", "")
+                        if mint:
+                            # Store AXIOM score in Redis with 5-min TTL
+                            key = f"axiom:score:{mint}"
+                            r.setex(key, 300, json.dumps({
+                                "score": payload.get("axiom_score", 0),
+                                "recommendation": payload.get("recommendation", "UNKNOWN"),
+                                "confidence": payload.get("confidence", 0),
+                            }))
+                            log.info(f"📥 AXIOM response stored for {mint[:12]}...: {payload.get('recommendation')}")
+                except Exception as e:
+                    log.error(f"UAI listener error: {e}")
+
+    thread = threading.Thread(target=listener, daemon=True)
+    thread.start()
+    log.info("UAI listener thread started")
+
+
 # ── Token Validation ─────────────────────────────────────────────────────────
 
 def validate_token(token: dict) -> bool:
@@ -294,8 +353,16 @@ async def listen_forever():
                     # Get NOVA social score from Redis cache
                     social_score = get_nova_social_score(mint)
 
+                    # Get AXIOM risk score from Redis (Phase 4 feedback loop)
+                    axiom_data = get_axiom_score(mint)
+
                     # Build normalized payload
                     payload = build_token_payload(token, metadata)
+
+                    # Enrich with AXIOM data (Phase 4 feedback)
+                    payload["axiom_score"] = axiom_data.get("score", 0)
+                    payload["axiom_recommendation"] = axiom_data.get("recommendation", "UNKNOWN")
+                    payload["axiom_confidence"] = axiom_data.get("confidence", 0)
 
                     log.info(
                         f"📡 {payload['symbol']} ({mint[:10]}...) "
@@ -355,4 +422,8 @@ def run_health_server(port: int = 8080):
 
 if __name__ == "__main__":
     run_health_server(int(os.getenv("PORT", "8080")))
+    
+    # Start UAI listener for AXIOM responses (Phase 4)
+    _start_uai_listener()
+    
     asyncio.run(listen_forever())
