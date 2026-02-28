@@ -22,10 +22,11 @@ PUMP_WS_URL = os.getenv('PUMP_WS_URL', 'wss://pumpportal.fun/api/data')
 PUMP_API_KEY = os.getenv('PUMP_API_KEY', '')
 NETWORK = 'solana'
 
-# BUG-03, BUG-14: Use SOL-denominated thresholds
-MIN_MARKET_CAP_SOL = float(os.getenv('MIN_MARKET_CAP_SOL', '1'))  # 1 SOL minimum
-MEDIUM_SIGNAL_SOL = float(os.getenv('MEDIUM_SIGNAL_SOL', '28'))   # ~$4.5K at current prices
-HIGH_SIGNAL_SOL = float(os.getenv('HIGH_SIGNAL_SOL', '100'))      # ~$16K
+# CHANGE 1: SOL-denominated thresholds
+MIN_MARKET_CAP_SOL = float(os.getenv('MIN_MARKET_CAP_SOL', '0'))
+HIGH_MARKET_CAP_SOL = float(os.getenv('HIGH_MARKET_CAP_SOL', '100'))
+MEDIUM_MARKET_CAP_SOL = float(os.getenv('MEDIUM_MARKET_CAP_SOL', '10'))
+SOL_USD_ESTIMATE = 150.0
 
 # BUG-09: Ensure DB directory exists
 db_dir = os.path.dirname(DB_PATH)
@@ -134,16 +135,27 @@ def sanitize(s: str, max_len: int = 64) -> str:
 
 
 def validate_token(token: dict) -> bool:
+    # CHANGE 2: Filter by txType == 'create'
     mint = token.get('mint', '')
-    if not mint or len(mint) > 44:
+    if not mint or len(mint) < 30 or len(mint) > 50:
         return False
-    symbol = token.get('symbol', '')
-    if not symbol or len(symbol) > 20:  # BUG-08: More lenient
-        return False
-    name = token.get('name', '')
-    if len(name) > 128:  # BUG-07: Truncate instead of reject
+    if token.get('txType') != 'create':
         return False
     return True
+
+
+# CHANGE 4: Fetch name/symbol from pump.fun API
+def fetch_token_metadata(mint: str) -> dict:
+    import urllib.request
+    try:
+        url = f"https://frontend-api.pump.fun/coins/{mint}"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.loads(r.read())
+            return {'name': data.get('name', 'Unknown'), 'symbol': data.get('symbol', '???')}
+    except Exception as e:
+        logger.debug(f"Metadata fetch failed for {mint}: {e}")
+        return {'name': 'Unknown', 'symbol': '???'}
 
 
 def calculate_risk(token: dict) -> tuple[int, str]:
@@ -304,10 +316,15 @@ async def listen_forever():
                         risk_score, risk_level = calculate_risk(token)
                         signal_level = determine_signal(market_cap_sol, risk_level)
                         
+                        # CHANGE 3: name/symbol not in WS — fetch from pump.fun API
+                        metadata = await asyncio.get_running_loop().run_in_executor(
+                            None, fetch_token_metadata, mint
+                        )
+                        
                         signal = TokenSignal(
                             mint=mint,
-                            name=token.get('name', 'Unknown'),
-                            symbol=token.get('symbol', '???'),
+                            name=metadata.get('name', 'Unknown'),
+                            symbol=metadata.get('symbol', '???'),
                             market_cap=market_cap_sol,
                             fdv=0,  # Not available in creation event
                             holders=0,  # Not available
