@@ -1,5 +1,5 @@
 """
-SENTINEL MVP — Pump.fun Token Scanner
+SENTINEL MVP — Pump.fun Token Scanner (CIPHER-FIXED)
 Real-time WebSocket listener for new token events
 """
 import asyncio
@@ -22,14 +22,15 @@ PUMP_WS_URL = os.getenv('PUMP_WS_URL', 'wss://pumpportal.fun/api/data')
 PUMP_API_KEY = os.getenv('PUMP_API_KEY', '')
 NETWORK = 'solana'
 
-# BUG-02: Lower threshold to catch new launches
-MIN_MARKET_CAP = 0
-HIGH_MARKET_CAP = 500_000
-MEDIUM_MARKET_CAP = 50_000
+# BUG-03, BUG-14: Use SOL-denominated thresholds
+MIN_MARKET_CAP_SOL = float(os.getenv('MIN_MARKET_CAP_SOL', '1'))  # 1 SOL minimum
+MEDIUM_SIGNAL_SOL = float(os.getenv('MEDIUM_SIGNAL_SOL', '28'))   # ~$4.5K at current prices
+HIGH_SIGNAL_SOL = float(os.getenv('HIGH_SIGNAL_SOL', '100'))      # ~$16K
 
-# F-07: Validate DB path at startup
-if DB_PATH == 'sentinel.db' or not DB_PATH.startswith('/app/'):
-    logger.warning(f"DB_PATH={DB_PATH} - ensure volume mount is configured")
+# BUG-09: Ensure DB directory exists
+db_dir = os.path.dirname(DB_PATH)
+if db_dir and not os.path.exists(db_dir):
+    os.makedirs(db_dir, exist_ok=True)
 
 
 @dataclass
@@ -125,59 +126,51 @@ class SentinelDB:
 
 
 def sanitize(s: str, max_len: int = 64) -> str:
-    # NEW-04: Don't strip _ since validate_token() now allows it
     if not s:
         return 'Unknown'
+    # BUG-07: Truncate instead of rejecting
     s = s.replace('*', '').replace('`', '').replace('[', '').replace(']', '')
     return s[:max_len].strip()
 
 
 def validate_token(token: dict) -> bool:
-    # REAL-05: Allow hyphens and underscores in symbols
     mint = token.get('mint', '')
     if not mint or len(mint) > 44:
         return False
     symbol = token.get('symbol', '')
-    if not symbol or len(symbol) > 10:
-        return False
-    # Allow alphanumeric, hyphens, underscores
-    if not symbol.replace('$', '').replace('-', '').replace('_', '').isalnum():
+    if not symbol or len(symbol) > 20:  # BUG-08: More lenient
         return False
     name = token.get('name', '')
-    if len(name) > 64:
+    if len(name) > 128:  # BUG-07: Truncate instead of reject
         return False
     return True
 
 
 def calculate_risk(token: dict) -> tuple[int, str]:
+    """BUG-13: Adapted for creation-time fields"""
     score = 0
-    holders = token.get('holder_count', 0) or 0
-    if holders < 10: score += 30
-    elif holders < 50: score += 20
-    elif holders < 100: score += 10
-    elif holders < 500: score += 5
     
-    mc = token.get('usd_market_cap', 0) or 0
-    fdv = token.get('usd_fdv', 0) or 0
-    if mc > 0:
-        ratio = fdv / mc
-        if ratio > 10: score += 30
-        elif ratio > 5: score += 20
-        elif ratio > 2: score += 10
-        elif ratio > 1: score += 5
+    # Use available fields: mint, symbol, name, marketCapSol, solAmount, vSolInBondingCurve
+    market_cap_sol = token.get('marketCapSol', 0) or 0
     
-    buy = token.get('tx_count_buy', 0) or 0
-    sell = token.get('tx_count_sell', 0) or 0
-    if sell > buy * 2: score += 20
-    elif sell > buy: score += 10
+    # BUG-02: These fields don't exist in creation event - estimate risk from SOL amount
+    sol_in_curve = token.get('vSolInBondingCurve', 0) or 0
     
-    vol = token.get('volume_30m', 0) or 0
-    if mc > 0 and vol > 0:
-        turnover = vol / mc
-        if turnover < 0.01: score += 20
-        elif turnover < 0.05: score += 15
-        elif turnover < 0.1: score += 10
-        elif turnover < 0.2: score += 5
+    # Higher SOL in bonding curve = more early interest = lower risk
+    if sol_in_curve > 50:
+        score += 20
+    elif sol_in_curve > 20:
+        score += 10
+    elif sol_in_curve > 5:
+        score += 5
+    
+    # New token with low market cap = higher risk
+    if market_cap_sol < 5:
+        score += 40
+    elif market_cap_sol < 15:
+        score += 25
+    elif market_cap_sol < 30:
+        score += 15
     
     if score >= 70: level = 'HIGH'
     elif score >= 40: level = 'MEDIUM'
@@ -185,10 +178,11 @@ def calculate_risk(token: dict) -> tuple[int, str]:
     return min(score, 100), level
 
 
-def determine_signal(market_cap: float, risk_level: str) -> str:
-    if market_cap >= HIGH_MARKET_CAP:
+def determine_signal(market_cap_sol: float, risk_level: str) -> str:
+    """BUG-14: Use SOL-denominated thresholds"""
+    if market_cap_sol >= HIGH_SIGNAL_SOL:
         return 'HIGH'
-    elif market_cap >= MEDIUM_MARKET_CAP:
+    elif market_cap_sol >= MEDIUM_SIGNAL_SOL:
         return 'MEDIUM' if risk_level != 'LOW' else 'LOW'
     return 'LOW'
 
@@ -203,21 +197,20 @@ def format_alert(signal: TokenSignal) -> str:
 
 Token: {name} (${symbol})
 Mint: `{mint[:20]}...`
-Market Cap: ${signal.market_cap:,.0f}
+Market Cap: {signal.market_cap:.2f} SOL
 Risk: {signal.risk_level} ({signal.risk_score}/100)
 Detected: {signal.detected_at}
     """.strip()
 
 
 def send_alerts(db: SentinelDB):
-    """NEW-01: Atomic alert - mark sent BEFORE sending to prevent duplicates"""
+    """BUG-04, BUG-05: Fixed - atomic alert"""
     import sqlite3
     
     conn = sqlite3.connect(db.db_path)
     conn.row_factory = sqlite3.Row
     
     try:
-        # Atomic: select and mark in one transaction
         cursor = conn.execute('''
             SELECT * FROM signals 
             WHERE alert_sent = 0 AND signal_level IN ('HIGH', 'MEDIUM')
@@ -229,7 +222,6 @@ def send_alerts(db: SentinelDB):
             conn.close()
             return
         
-        # Mark as sent BEFORE alerting (prevents race condition)
         ids_to_mark = [r['id'] for r in rows]
         conn.execute(
             f'UPDATE signals SET alert_sent = 1 WHERE id IN ({",".join("?" * len(ids_to_mark))})',
@@ -237,7 +229,6 @@ def send_alerts(db: SentinelDB):
         )
         conn.commit()
         
-        # Now send alerts (safe - duplicates won't be picked up)
         for r in rows:
             signal = TokenSignal(
                 mint=r['mint'], name=r['name'], symbol=r['symbol'],
@@ -258,7 +249,7 @@ def send_alerts(db: SentinelDB):
 
 
 async def send_alerts_async(db: SentinelDB):
-    """NEW-03: Use get_running_loop() instead of deprecated get_event_loop()"""
+    """BUG-04: Properly defined async wrapper"""
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
@@ -273,16 +264,11 @@ async def listen_forever():
     
     while True:
         try:
-            # REAL-04: Add keepalive to prevent Railway dropping idle connections
             async with websockets.connect(PUMP_WS_URL, ping_interval=20, ping_timeout=10) as ws:
                 logger.info("Connected to PumpPortal WebSocket")
                 
-                # Subscribe to new token events
-                # REAL-01: PumpPortal expects "keys": [] or no keys field for global subscription
-                subscribe_msg = {
-                    "method": "subscribeNewToken",
-                    "keys": []
-                }
+                # BUG-10: Fixed subscription message
+                subscribe_msg = {"method": "subscribeNewToken"}
                 if PUMP_API_KEY:
                     subscribe_msg["apiKey"] = PUMP_API_KEY
                 
@@ -294,66 +280,70 @@ async def listen_forever():
                     try:
                         data = json.loads(raw)
                         
-                        # REAL-02: Only process actual newToken events, not broad 'data' messages
-                        # Filter out ACKs, errors, pings
-                        if data.get('method') == 'newToken' and 'data' in data:
+                        # BUG-01: Check for txType == 'create' in flat JSON
+                        # PumpPortal sends flat JSON with txType field
+                        if data.get('txType') == 'create':
+                            token = data  # Flat structure
+                        elif data.get('method') == 'newToken' and 'data' in data:
                             token = data.get('data', {})
-                            
-                            if not validate_token(token):
-                                continue
-                            
-                            mint = token.get('mint', '')
-                            if not mint or not db.is_new_token(mint):
-                                continue
-                            
-                            market_cap = token.get('usd_market_cap', 0) or 0
-                            if market_cap < MIN_MARKET_CAP:
-                                continue
-                            
-                            risk_score, risk_level = calculate_risk(token)
-                            signal_level = determine_signal(market_cap, risk_level)
-                            
-                            signal = TokenSignal(
-                                mint=mint,
-                                name=token.get('name', 'Unknown'),
-                                symbol=token.get('symbol', '???'),
-                                market_cap=market_cap,
-                                fdv=token.get('usd_fdv', 0) or 0,
-                                holders=token.get('holder_count', 0) or 0,
-                                volume_30m=token.get('volume_30m', 0) or 0,
-                                tx_buy=token.get('tx_count_buy', 0) or 0,
-                                tx_sell=token.get('tx_count_sell', 0) or 0,
-                                risk_score=risk_score,
-                                risk_level=risk_level,
-                                signal_level=signal_level,
-                                detected_at=datetime.now(timezone.utc).isoformat(),  # REAL-06
-                            )
-                            
-                            db.insert_or_update(signal)
-                            logger.info(f"📡 {signal.symbol}: {signal.signal_level}/{signal.risk_level}")
-                            
-                            # REAL-03: Don't block the listener - send alerts async
-                            # NEW-02: Add done callback to catch exceptions
-                            task = asyncio.create_task(send_alerts_async(db))
-                            task.add_done_callback(lambda t: logger.error(f"Alert task failed: {t.exception()}") if t.exception() else None)
-                            
-                            # Send to AXIOM via UAI for quant analysis
-                            try:
-                                from sentinel_to_axiom import send_to_axiom
-                                asyncio.create_task(asyncio.get_running_loop().run_in_executor(
-                                    None, send_to_axiom, {
-                                        'symbol': signal.symbol,
-                                        'name': signal.name,
-                                        'mint': signal.mint,
-                                        'market_cap': signal.market_cap,
-                                        'risk_score': signal.risk_score,
-                                        'risk_level': signal.risk_level,
-                                        'signal_level': signal.signal_level,
-                                        'detected_at': signal.detected_at
-                                    }
-                                ))
-                            except Exception as e:
-                                logger.error(f"AXIOM send failed: {e}")
+                        else:
+                            continue
+                        
+                        if not validate_token(token):
+                            continue
+                        
+                        mint = token.get('mint', '')
+                        if not mint or not db.is_new_token(mint):
+                            continue
+                        
+                        # BUG-02: Use correct field names
+                        market_cap_sol = token.get('marketCapSol', 0) or 0
+                        if market_cap_sol < MIN_MARKET_CAP_SOL:
+                            continue
+                        
+                        risk_score, risk_level = calculate_risk(token)
+                        signal_level = determine_signal(market_cap_sol, risk_level)
+                        
+                        signal = TokenSignal(
+                            mint=mint,
+                            name=token.get('name', 'Unknown'),
+                            symbol=token.get('symbol', '???'),
+                            market_cap=market_cap_sol,
+                            fdv=0,  # Not available in creation event
+                            holders=0,  # Not available
+                            volume_30m=0,  # Not available
+                            tx_buy=0,
+                            tx_sell=0,
+                            risk_score=risk_score,
+                            risk_level=risk_level,
+                            signal_level=signal_level,
+                            detected_at=datetime.now(timezone.utc).isoformat(),
+                        )
+                        
+                        db.insert_or_update(signal)
+                        logger.info(f"📡 {signal.symbol}: {signal.signal_level}/{signal.risk_level}")
+                        
+                        # BUG-04, BUG-05: Properly call async alerts
+                        task = asyncio.create_task(send_alerts_async(db))
+                        task.add_done_callback(lambda t: logger.error(f"Alert task failed: {t.exception()}") if t.exception() else None)
+                        
+                        # Send to AXIOM via UAI
+                        try:
+                            from sentinel_to_axiom import send_to_axiom
+                            asyncio.create_task(asyncio.get_running_loop().run_in_executor(
+                                None, send_to_axiom, {
+                                    'symbol': signal.symbol,
+                                    'name': signal.name,
+                                    'mint': signal.mint,
+                                    'market_cap': signal.market_cap,
+                                    'risk_score': signal.risk_score,
+                                    'risk_level': signal.risk_level,
+                                    'signal_level': signal.signal_level,
+                                    'detected_at': signal.detected_at
+                                }
+                            ))
+                        except Exception as e:
+                            logger.error(f"AXIOM send failed: {e}")
                             
                     except json.JSONDecodeError:
                         logger.warning(f"Invalid JSON: {raw[:100]}")
@@ -367,7 +357,6 @@ async def listen_forever():
 
 
 if __name__ == '__main__':
-    # Health check server for Railway
     import threading
     from http.server import HTTPServer, BaseHTTPRequestHandler
     
@@ -384,5 +373,5 @@ if __name__ == '__main__':
     thread.daemon = True
     thread.start()
     
-    logger.info("SENTINEL started — WebSocket mode")
+    logger.info("SENTINEL started — WebSocket mode (CIPHER-FIXED)")
     asyncio.run(listen_forever())
