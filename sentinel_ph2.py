@@ -37,11 +37,23 @@ PUMP_WS_URL          = os.getenv("PUMP_WS_URL", "wss://pumpportal.fun/api/data")
 PUMP_API_KEY         = os.getenv("PUMP_API_KEY", "")
 REDIS_URL            = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-# Filter thresholds (CEO updated Feb 28 @ $85/SOL)
-MIN_MARKET_CAP_SOL   = float(os.getenv("MIN_MARKET_CAP_SOL", "56"))  # ~$4750 at $85/SOL
+# Filter thresholds (CEO updated Feb 28)
+MIN_MARKET_CAP_SOL   = float(os.getenv("MIN_MARKET_CAP_SOL", "56"))  # ~$4750 at current SOL price
 MIN_VSOL_USD         = float(os.getenv("MIN_VSOL_USD", "5900"))      # Filter dead coins
 
-SOL_USD_ESTIMATE     = float(os.getenv("SOL_USD_ESTIMATE", "85"))
+# Get live SOL price from CoinGecko (fallback to estimate)
+def get_sol_price() -> float:
+    """Fetch live SOL/USD price from CoinGecko."""
+    try:
+        import urllib.request
+        url = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = json.loads(resp.read())
+            return data.get("solana", {}).get("usd", 85.0)
+    except Exception:
+        return 85.0  # Fallback
+
+SOL_USD_ESTIMATE     = get_sol_price()
 RECONNECT_DELAY_S    = int(os.getenv("RECONNECT_DELAY_S", "5"))
 
 # ── Redis + Celery app ───────────────────────────────────────────────────────

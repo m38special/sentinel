@@ -28,12 +28,24 @@ DB_PATH = os.getenv('DB_PATH', '/app/data/sentinel.db')
 PUMP_WS_URL = os.getenv('PUMP_WS_URL', 'wss://pumpportal.fun/api/data')
 PUMP_API_KEY = os.getenv('PUMP_API_KEY', '')
 
-# Filter thresholds (CEO updated Feb 28 @ $85/SOL)
-MIN_MARKET_CAP_SOL = float(os.getenv('MIN_MARKET_CAP_SOL', '56'))   # ~$4750 at $85/SOL
+# Filter thresholds (CEO updated Feb 28)
+MIN_MARKET_CAP_SOL = float(os.getenv('MIN_MARKET_CAP_SOL', '56'))   # ~$4750 at current SOL price
 MIN_VOLUME_USD = float(os.getenv('MIN_VOLUME_USD', '5900'))        # Filter dead coins
 MIN_BUYS = int(os.getenv('MIN_BUYS', '10'))                       # Filter bot/dev bought coins
 
-SOL_USD_ESTIMATE = 85.0  # Rough estimate for display only
+# Get live SOL price from CoinGecko (fallback to estimate)
+def get_sol_price() -> float:
+    """Fetch live SOL/USD price from CoinGecko."""
+    try:
+        import urllib.request
+        url = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = json.loads(resp.read())
+            return data.get("solana", {}).get("usd", 85.0)
+    except Exception:
+        return 85.0  # Fallback
+
+SOL_USD_ESTIMATE = get_sol_price()
 
 if not DB_PATH.startswith('/app/'):
     logger.warning(f"DB_PATH={DB_PATH} - ensure volume mount is configured")
