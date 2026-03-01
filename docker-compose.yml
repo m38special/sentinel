@@ -145,9 +145,6 @@ services:
     restart: unless-stopped
     networks:
       - sentinel_net
-    profiles:
-      - local   # Only start local redis when using 'local' profile
-                # In prod, use Railway Redis via REDIS_URL env var
 
   # ──────────────────────────────
   # TimescaleDB (time-series storage)

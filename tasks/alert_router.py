@@ -266,6 +266,25 @@ def route_alert(self, token: dict[str, Any], score: float):
         from tasks.store_token import record_alert
         record_alert.delay(token, score, channels_hit)
 
+        # Phase 5: Create content draft for Yoruichi approval (score >= 85)
+        if score >= THRESHOLD_ALL:
+            from tasks.content_approval import create_content_draft
+            create_content_draft.delay(
+                content_type="token_alert",
+                title=f"🚀 New Token Alert: ${symbol}",
+                body=f"SENTINEL scored ${symbol} at {score:.1f}/100. Review and approve to post.",
+                token_symbol=symbol,
+                token_mint=mint,
+                metadata={
+                    "score": score,
+                    "liquidity_sol": token.get("vSolInBondingCurve", 0),
+                    "holders": token.get("holders", 0),
+                    "social_score": token.get("social_score", 0),
+                    "risk_flags": token.get("risk_flags", []),
+                }
+            )
+            log.info("content_draft_created_for_approval", symbol=symbol, score=score)
+
         # Release in-flight lock and set long-TTL dedup key
         release_in_flight_and_set_dedup(mint, score)
 
