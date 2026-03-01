@@ -28,12 +28,12 @@ DB_PATH = os.getenv('DB_PATH', '/app/data/sentinel.db')
 PUMP_WS_URL = os.getenv('PUMP_WS_URL', 'wss://pumpportal.fun/api/data')
 PUMP_API_KEY = os.getenv('PUMP_API_KEY', '')
 
-# Filter thresholds (CEO updated Feb 28)
-MIN_MARKET_CAP_SOL = float(os.getenv('MIN_MARKET_CAP_SOL', '30'))   # ~$4750 at $150/SOL
-MIN_VOLUME_USD = float(os.getenv('MIN_VOLUME_USD', '5000'))        # Filter dead coins
+# Filter thresholds (CEO updated Feb 28 @ $85/SOL)
+MIN_MARKET_CAP_SOL = float(os.getenv('MIN_MARKET_CAP_SOL', '56'))   # ~$4750 at $85/SOL
+MIN_VOLUME_USD = float(os.getenv('MIN_VOLUME_USD', '5900'))        # Filter dead coins
 MIN_BUYS = int(os.getenv('MIN_BUYS', '10'))                       # Filter bot/dev bought coins
 
-SOL_USD_ESTIMATE = 150.0  # Rough estimate for display only
+SOL_USD_ESTIMATE = 85.0  # Rough estimate for display only
 
 if not DB_PATH.startswith('/app/'):
     logger.warning(f"DB_PATH={DB_PATH} - ensure volume mount is configured")

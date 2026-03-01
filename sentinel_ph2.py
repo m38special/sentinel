@@ -37,11 +37,11 @@ PUMP_WS_URL          = os.getenv("PUMP_WS_URL", "wss://pumpportal.fun/api/data")
 PUMP_API_KEY         = os.getenv("PUMP_API_KEY", "")
 REDIS_URL            = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-# Filter thresholds (CEO updated Feb 28)
-MIN_MARKET_CAP_SOL   = float(os.getenv("MIN_MARKET_CAP_SOL", "30"))  # ~$4750 at $150/SOL
-MIN_VSOL_USD         = float(os.getenv("MIN_VSOL_USD", "5000"))      # Filter dead coins
+# Filter thresholds (CEO updated Feb 28 @ $85/SOL)
+MIN_MARKET_CAP_SOL   = float(os.getenv("MIN_MARKET_CAP_SOL", "56"))  # ~$4750 at $85/SOL
+MIN_VSOL_USD         = float(os.getenv("MIN_VSOL_USD", "5900"))      # Filter dead coins
 
-SOL_USD_ESTIMATE     = float(os.getenv("SOL_USD_ESTIMATE", "150"))
+SOL_USD_ESTIMATE     = float(os.getenv("SOL_USD_ESTIMATE", "85"))
 RECONNECT_DELAY_S    = int(os.getenv("RECONNECT_DELAY_S", "5"))
 
 # ── Redis + Celery app ───────────────────────────────────────────────────────
