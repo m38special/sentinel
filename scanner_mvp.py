@@ -28,11 +28,10 @@ DB_PATH = os.getenv('DB_PATH', '/app/data/sentinel.db')
 PUMP_WS_URL = os.getenv('PUMP_WS_URL', 'wss://pumpportal.fun/api/data')
 PUMP_API_KEY = os.getenv('PUMP_API_KEY', '')
 
-# FIX-04: New tokens launch at 0-5 SOL mcap. Old 10k USD filter killed everything.
-MIN_MARKET_CAP_SOL = float(os.getenv('MIN_MARKET_CAP_SOL', '0'))
-HIGH_MARKET_CAP_SOL = float(os.getenv('HIGH_MARKET_CAP_SOL', '100'))    # ~$15k USD at $150/SOL
-MEDIUM_MARKET_CAP_SOL = float(os.getenv('MEDIUM_MARKET_CAP_SOL', '10')) # ~$1.5k USD
-MIN_VOLUME_USD = float(os.getenv('MIN_VOLUME_USD', '0'))  # FIND-16: 10k default blocked all new tokens             # Minimum 24h volume in USD
+# Filter thresholds (CEO updated Feb 28)
+MIN_MARKET_CAP_SOL = float(os.getenv('MIN_MARKET_CAP_SOL', '30'))   # ~$4750 at $150/SOL
+MIN_VOLUME_USD = float(os.getenv('MIN_VOLUME_USD', '5000'))        # Filter dead coins
+MIN_BUYS = int(os.getenv('MIN_BUYS', '10'))                       # Filter bot/dev bought coins
 
 SOL_USD_ESTIMATE = 150.0  # Rough estimate for display only
 
@@ -307,6 +306,10 @@ async def listen_forever():
                         if MIN_VOLUME_USD > 0 and volume_usd_est < MIN_VOLUME_USD:
                             logger.debug(f"Token filtered: initial buy ${volume_usd_est:,.0f} < ${MIN_VOLUME_USD:,.0f} min")
                             continue
+
+                        # MIN_BUYS filter: Requires tracking trades over time
+                        # For now, this is a placeholder - would need historical trade count
+                        # Could be implemented via TimescaleDB query or Redis tracking
 
                         risk_score, risk_level = calculate_risk(token)
                         signal_level = determine_signal(market_cap_sol, risk_level)
