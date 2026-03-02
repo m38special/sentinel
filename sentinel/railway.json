@@ -14,7 +14,9 @@
   "env": [
       {"key": "PORT", "value": "8080"},
       {"key": "REDIS_URL", "value": "{{REDIS_URL}}"},
-      {"key": "SLACK_CHANNEL_ID", "value": "{{SLACK_CHANNEL_ID}}"},
-      {"key": "SLACK_BOT_TOKEN", "value": "{{SLACK_BOT_TOKEN}}"}
+      {"key": "SLACK_BOT_TOKEN", "value": "{{SLACK_BOT_TOKEN}}"},
+      {"key": "SLACK_ALERT_CHANNEL", "value": "C0AHE2LQFRC"},
+      {"key": "ALERT_THRESHOLD_SLACK", "value": "70"},
+      {"key": "ALERT_THRESHOLD_ALL", "value": "85"}
   ]
 }
