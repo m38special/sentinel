@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquid.Swap | Solana DEX Aggregator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --gold: #c9a227;
+            --gold-light: #e8d48a;
+            --black: #0a0a0a;
+            --cream: #f5f0e6;
+        }
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: var(--black);
+            color: var(--cream);
+        }
+        .font-display { font-family: 'Cormorant Garamond', serif; }
+        .gold-gradient {
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .pool-card {
+            background: linear-gradient(145deg, #151515 0%, #0d0d0d 100%);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(201, 162, 39, 0.1);
+            transition: all 0.3s ease;
+        }
+        .pool-card:hover {
+            border-color: var(--gold);
+            box-shadow: 0 0 30px rgba(201, 162, 39, 0.15);
+        }
+        .dex-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .raydium { background: linear-gradient(135deg, #1a1a2e, #4361ee); }
+        .orca { background: linear-gradient(135deg, #9945ff, #14f195); }
+        .jupiter { background: linear-gradient(135deg, #1a1a2e, #6366f1); }
+        .serum { background: linear-gradient(135deg, #000, #00d4ff); }
+        .lido { background: linear-gradient(135deg, #1a1a2e, #00a3ff); }
+        
+        .tab-active {
+            border-bottom: 2px solid var(--gold);
+            color: var(--gold);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="border-b border-yellow-900/30">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="font-display text-3xl tracking-widest gold-gradient">LIQUID.SWAP</div>
+            <nav class="flex gap-6">
+                <button onclick="showTab('swap')" id="tab-swap" class="text-xs tracking-widest uppercase text-yellow-500 tab-active pb-1">Swap</button>
+                <button onclick="showTab('pools')" id="tab-pools" class="text-xs tracking-widest uppercase text-yellow-500/50 hover:text-yellow-400 pb-1">Pools</button>
+            </nav>
+            <button class="px-6 py-2 border border-yellow-500 text-yellow-500 text-xs tracking-widest uppercase hover:bg-yellow-500 hover:text-black transition">
+                Connect Wallet
+            </button>
+        </div>
+    </header>
+
+    <!-- Swap Tab -->
+    <main id="swap-view" class="max-w-7xl mx-auto px-6 py-12">
+        <div class="max-w-lg mx-auto">
+            <div class="text-center mb-8">
+                <h1 class="font-display text-5xl mb-2">Swap</h1>
+                <p class="text-yellow-500/50 text-sm">Trade SPL tokens instantly on Solana</p>
+            </div>
+            <!-- Swap card would go here -->
+            <div class="swap-card rounded-xl p-6 text-center text-yellow-500/50">
+                Connect wallet to trade
+            </div>
+        </div>
+    </main>
+
+    <!-- Pools Tab -->
+    <main id="pools-view" class="max-w-7xl mx-auto px-6 py-12 hidden">
+        <div class="text-center mb-8">
+            <h1 class="font-display text-5xl mb-2">Liquidity Pools</h1>
+            <p class="text-yellow-500/50 text-sm">Aggregate liquidity from all major Solana DEXs</p>
+        </div>
+        
+        <!-- Search -->
+        <div class="max-w-md mx-auto mb-8">
+            <input type="text" id="poolSearch" placeholder="Search token pairs..." 
+                class="w-full bg-[#0a0a0a] border border-yellow-900/30 rounded-lg px-4 py-3 text-sm outline-none focus:border-yellow-500">
+        </div>
+        
+        <!-- Pool Stats -->
+        <div class="grid grid-cols-4 gap-4 mb-8">
+            <div class="pool-card rounded-xl p-4 text-center">
+                <div class="text-2xl font-display text-yellow-500">$2.4B</div>
+                <div class="text-xs text-yellow-500/50 mt-1">Total Value Locked</div>
+            </div>
+            <div class="pool-card rounded-xl p-4 text-center">
+                <div class="text-2xl font-display text-yellow-500">5</div>
+                <div class="text-xs text-yellow-500/50 mt-1">DEXs Aggregated</div>
+            </div>
+            <div class="pool-card rounded-xl p-4 text-center">
+                <div class="text-2xl font-display text-yellow-500">150+</div>
+                <div class="text-xs text-yellow-500/50 mt-1">Token Pairs</div>
+            </div>
+            <div class="pool-card rounded-xl p-4 text-center">
+                <div class="text-2xl font-display text-yellow-500">0.3%</div>
+                <div class="text-xs text-yellow-500/50 mt-1">Best Fee Savings</div>
+            </div>
+        </div>
+        
+        <!-- Pool List -->
+        <div id="poolList" class="space-y-3">
+            <!-- Pools will be populated here -->
+        </div>
+    </main>
+
+    <script>
+        // Aggregated liquidity pools data
+        const POOLS = [
+            { pair: 'SOL/USDC', dex: 'Raydium', liquidity: 450000000, volume24h: 180000000, apy: 12.5, fee: 0.25 },
+            { pair: 'SOL/USDC', dex: 'Orca', liquidity: 320000000, volume24h: 95000000, apy: 10.2, fee: 0.3 },
+            { pair: 'SOL/USDC', dex: 'Jupiter', liquidity: 280000000, volume24h: 120000000, apy: 8.5, fee: 0.2 },
+            { pair: 'SOL/USDT', dex: 'Raydium', liquidity: 380000000, volume24h: 150000000, apy: 11.8, fee: 0.25 },
+            { pair: 'SOL/USDT', dex: 'Orca', liquidity: 180000000, volume24h: 45000000, apy: 9.2, fee: 0.3 },
+            { pair: 'BONK/SOL', dex: 'Raydium', liquidity: 85000000, volume24h: 42000000, apy: 25.5, fee: 0.25 },
+            { pair: 'BONK/SOL', dex: 'Orca', liquidity: 62000000, volume24h: 28000000, apy: 22.1, fee: 0.3 },
+            { pair: 'WIF/SOL', dex: 'Raydium', liquidity: 120000000, volume24h: 85000000, apy: 18.2, fee: 0.25 },
+            { pair: 'WIF/SOL', dex: 'Jupiter', liquidity: 95000000, volume24h: 62000000, apy: 15.5, fee: 0.2 },
+            { pair: 'JUP/SOL', dex: 'Raydium', liquidity: 75000000, volume24h: 35000000, apy: 14.8, fee: 0.25 },
+            { pair: 'JUP/SOL', dex: 'Orca', liquidity: 45000000, volume24h: 18000000, apy: 11.2, fee: 0.3 },
+            { pair: 'mSOL/SOL', dex: 'Raydium', liquidity: 180000000, volume24h: 25000000, apy: 6.5, fee: 0.25 },
+            { pair: 'mSOL/SOL', dex: 'Lido', liquidity: 220000000, volume24h: 35000000, apy: 7.2, fee: 0.1 },
+            { pair: 'stSOL/SOL', dex: 'Raydium', liquidity: 95000000, volume24h: 12000000, apy: 5.8, fee: 0.25 },
+            { pair: 'stSOL/SOL', dex: 'Lido', liquidity: 110000000, volume24h: 15000000, apy: 6.1, fee: 0.1 },
+        ];
+        
+        const DEX_COLORS = {
+            'Raydium': 'raydium',
+            'Orca': 'orca',
+            'Jupiter': 'jupiter',
+            'Serum': 'serum',
+            'Lido': 'lido'
+        };
+        
+        function formatNumber(num) {
+            if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+            return num.toFixed(0);
+        }
+        
+        function renderPools(pools) {
+            const poolList = document.getElementById('poolList');
+            poolList.innerHTML = pools.map(pool => `
+                <div class="pool-card rounded-xl p-4 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="dex-logo ${DEX_COLORS[pool.dex]}">${pool.dex[0]}</div>
+                        <div>
+                            <div class="font-medium">${pool.pair}</div>
+                            <div class="text-xs text-yellow-500/50">${pool.dex}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-medium">$${formatNumber(pool.liquidity)}</div>
+                        <div class="text-xs text-yellow-500/50">Liquidity</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-medium">$${formatNumber(pool.volume24h)}</div>
+                        <div class="text-xs text-yellow-500/50">24h Volume</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-medium text-green-400">${pool.apy}%</div>
+                        <div class="text-xs text-yellow-500/50">APY</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-medium">${pool.fee}%</div>
+                        <div class="text-xs text-yellow-500/50">Fee</div>
+                    </div>
+                    <button class="px-4 py-2 bg-yellow-500 text-black text-xs font-medium rounded hover:bg-yellow-400 transition">
+                        Add Liquidity
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        function showTab(tab) {
+            document.getElementById('swap-view').classList.add('hidden');
+            document.getElementById('pools-view').classList.add('hidden');
+            document.getElementById('tab-swap').classList.remove('tab-active');
+            document.getElementById('tab-pools').classList.remove('tab-active');
+            document.getElementById('tab-swap').classList.add('text-yellow-500/50');
+            document.getElementById('tab-pools').classList.add('text-yellow-500/50');
+            
+            document.getElementById(tab + '-view').classList.remove('hidden');
+            document.getElementById('tab-' + tab).classList.add('tab-active');
+            document.getElementById('tab-' + tab).classList.remove('text-yellow-500/50');
+        }
+        
+        // Search functionality
+        document.getElementById('poolSearch').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = POOLS.filter(p => 
+                p.pair.toLowerCase().includes(query) || 
+                p.dex.toLowerCase().includes(query)
+            );
+            renderPools(filtered);
+        });
+        
+        // Initial render
+        renderPools(POOLS);
+    </script>
+</body>
+</html>
