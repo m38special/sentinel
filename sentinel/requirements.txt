@@ -46,3 +46,5 @@ ujson==5.9.0                 # fast JSON
 tenacity==8.2.3              # retry logic
 django-celery-beat==2.5.0
 flask>=3.0.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
