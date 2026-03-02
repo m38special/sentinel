@@ -69,6 +69,18 @@ app.conf.update(
             "schedule": crontab(minute="0", hour="13", day_of_week="*"),  # 7am CT = 13:00 UTC
             "options": {"queue": "sentinel"},
         },
+        # Executive Summary at 7am CT
+        "executive-summary-7am-ct": {
+            "task": "tasks.cfo_command.generate_executive_summary",
+            "schedule": crontab(minute="5", hour="13", day_of_week="*"),  # 7:05am CT = 13:05 UTC
+            "options": {"queue": "sentinel"},
+        },
+        # Daily Newsletter at 8am CT
+        "daily-newsletter-8am-ct": {
+            "task": "tasks.cfo_command.generate_daily_newsletter",
+            "schedule": crontab(minute="0", hour="14", day_of_week="*"),  # 8am CT = 14:00 UTC
+            "options": {"queue": "sentinel"},
+        },
     },
 )
 
