@@ -1,0 +1,18 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile.dashboard"
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "wakeCommand": "python ceo_dashboard.py",
+    "startupTimeout": 60,
+    "env": [
+      {"key": "REDIS_URL", "value": "{{REDIS_URL}}"},
+      {"key": "PORT", "value": "8080"}
+    ]
+  }
+}
