@@ -188,14 +188,25 @@ services:
 
 ---
 
-## Future Roadmap
+## Future Roadmap (v2.1+)
 
-- [x] Phase 6: Multi-chain expansion (Raydium, Orca) — ccxt integrated
-- [x] Phase 8: Voice alerts (TTS) — ChatTTS integrated
-- [ ] Phase 7: ML-based scoring model
-- [ ] Phase 9: Real-time portfolio tracking
-- [ ] Agent-to-Agent direct messaging
-- [ ] Advanced backtesting (vectorbt)
+### Week 1-2 Priorities
+- [x] v2.1 deploy + ccxt integration
+- [x] Daily briefing pipeline live
+- [ ] AXIOM Scoring v2.0 (in progress)
+- [ ] CIPHER Forta integration (in progress)
+
+### Week 3-4
+- [ ] CIPHER Forta deployment
+- [ ] Horizontal scaling (Celery workers)
+- [ ] Multi-region deployment planning
+
+### Ongoing
+- [ ] NOVA content ops (@888 3x/week)
+- [ ] @liquidinsights launch
+- [ ] Yoruichi revenue diversification
+- [ ] AXIOM backtesting pipeline (vectorbt)
+- [ ] Phase 7 ML model training
 
 ---
 
