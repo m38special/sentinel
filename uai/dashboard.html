@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAI — Universal Agent Interface | LiQUiD SOUND</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --gold: #c9a227; --gold-light: #e8d48a; --black: #0a0a0a; --cream: #f5f0e6; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--black); color: var(--cream); }
+        .font-display { font-family: 'Cormorant Garamond', serif; }
+        .gold-gradient { background: linear-gradient(135deg, var(--gold), var(--gold-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .service-card { background: linear-gradient(145deg, #151515 0%, #0d0d0d 100%); border: 1px solid rgba(201, 162, 39, 0.1); transition: all 0.3s ease; }
+        .service-card:hover { border-color: var(--gold); box-shadow: 0 0 30px rgba(201, 162, 39, 0.15); }
+        .agent-avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <header class="border-b border-yellow-900/30">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="font-display text-2xl tracking-widest gold-gradient">UAI — Universal Agent Interface</div>
+            <div class="text-xs text-yellow-500/50">LiQUiD SOUND | Production</div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-12">
+        <!-- Production Services -->
+        <div class="text-center mb-12">
+            <h1 class="font-display text-5xl mb-2">Production Services</h1>
+            <p class="text-yellow-500/50">48-Hour Activity Summary</p>
+        </div>
+        
+        <!-- Stats -->
+        <div class="grid grid-cols-4 gap-4 mb-12">
+            <div class="service-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-display text-yellow-500">7</div>
+                <div class="text-xs text-yellow-500/50 mt-2">Active Services</div>
+            </div>
+            <div class="service-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-display text-yellow-500">5</div>
+                <div class="text-xs text-yellow-500/50 mt-2">AI Agents</div>
+            </div>
+            <div class="service-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-display text-yellow-500">24/7</div>
+                <div class="text-xs text-yellow-500/50 mt-2">Uptime</div>
+            </div>
+            <div class="service-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-display text-yellow-500">Phase 8</div>
+                <div class="text-xs text-yellow-500/50 mt-2">Current Version</div>
+            </div>
+        </div>
+        
+        <!-- Services Grid -->
+        <div class="grid grid-cols-2 gap-6 mb-12">
+            <!-- CEO Dashboard -->
+            <div class="service-card rounded-xl p-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="agent-avatar bg-gradient-to-br from-yellow-500 to-yellow-600">🏢</div>
+                    <div>
+                        <h3 class="font-display text-xl">CEO Dashboard</h3>
+                        <p class="text-xs text-yellow-500/50">SENTINEL Phase 6</p>
+                    </div>
+                </div>
+                <a href="https://sentinel-production-f9d8.up.railway.app/" target="_blank" class="block text-center py-3 bg-yellow-500 text-black font-medium rounded hover:bg-yellow-400 transition">
+                    Open Dashboard →
+                </a>
+            </div>
+            
+            <!-- Liquid.Swap -->
+            <div class="service-card rounded-xl p-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="agent-avatar bg-gradient-to-br from-purple-500 to-purple-600">💧</div>
+                    <div>
+                        <h3 class="font-display text-xl">Liquid.Swap</h3>
+                        <p class="text-xs text-yellow-500/50">DEX Aggregator</p>
+                    </div>
+                </div>
+                <a href="https://radiant-alpaca-fdf79f.netlify.app/" target="_blank" class="block text-center py-3 bg-yellow-500 text-black font-medium rounded hover:bg-yellow-400 transition">
+                    Open Swap →
+                </a>
+            </div>
+            
+            <!-- Liquid.Swap Pools -->
+            <div class="service-card rounded-xl p-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="agent-avatar bg-gradient-to-br from-blue-500 to-blue-600">📊</div>
+                    <div>
+                        <h3 class="font-display text-xl">Liquidity Pools</h3>
+                        <p class="text-xs text-yellow-500/50">Jupiter/Raydium/Orca</p>
+                    </div>
+                </div>
+                <a href="https://radiant-alpaca-fdf79f.netlify.app/pools.html" target="_blank" class="block text-center py-3 bg-yellow-500 text-black font-medium rounded hover:bg-yellow-400 transition">
+                    View Pools →
+                </a>
+            </div>
+            
+            <!-- LiQUiD SOUND Landing -->
+            <div class="service-card rounded-xl p-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="agent-avatar bg-gradient-to-br from-yellow-500 to-amber-600">✨</div>
+                    <div>
+                        <h3 class="font-display text-xl">LiQUiD SOUND</h3>
+                        <p class="text-xs text-yellow-500/50">Brand Landing (DNS Pending)</p>
+                    </div>
+                </div>
+                <a href="https://radiant-alpaca-fdf79f.netlify.app/" target="_blank" class="block text-center py-3 bg-yellow-500 text-black font-medium rounded hover:bg-yellow-400 transition">
+                    View Site →
+                </a>
+            </div>
+        </div>
+        
+        <!-- AI Agents -->
+        <h2 class="font-display text-3xl text-center mb-6">AI Agents</h2>
+        <div class="grid grid-cols-5 gap-4">
+            <div class="service-card rounded-xl p-4 text-center">
+                <div class="agent-avatar bg-gradient-to-br from-yellow-500 to-yellow-600 mx-auto mb-2">👑</div>
+                <div class="font-medium">Yoruichi</div>
+                <div class="text-xs text-yellow-500/50">CFO</div>
+            </div>
+            <div class="service-card rounded-xl p-4 text-center">
+                <div class="agent-avatar bg-gradient-to-br from-purple-500 to-purple-600 mx-auto mb-2">⚡</div>
+                <div class="font-medium">Urahara</div>
+                <div class="text-xs text-yellow-500/50">CTO</div>
+            </div>
+            <div class="service-card rounded-xl p-4 text-center">
+                <div class="agent-avatar bg-gradient-to-br from-blue-500 to-blue-600 mx-auto mb-2">🧠</div>
+                <div class="font-medium">AXIOM</div>
+                <div class="text-xs text-yellow-500/50">Quant</div>
+            </div>
+            <div class="service-card rounded-xl p-4 text-center">
+                <div class="agent-avatar bg-gradient-to-br from-green-500 to-green-600 mx-auto mb-2">🔐</div>
+                <div class="font-medium">CIPHER</div>
+                <div class="text-xs text-yellow-500/50">Security</div>
+            </div>
+            <div class="service-card rounded-xl p-4 text-center">
+                <div class="agent-avatar bg-gradient-to-br from-pink-500 to-pink-600 mx-auto mb-2">📡</div>
+                <div class="font-medium">NOVA</div>
+                <div class="text-xs text-yellow-500/50">Social</div>
+            </div>
+        </div>
+        
+        <!-- Phase History -->
+        <h2 class="font-display text-3xl text-center mt-12 mb-6">Phase History (48 Hours)</h2>
+        <div class="service-card rounded-xl p-6">
+            <div class="space-y-3">
+                <div class="flex justify-between items-center py-2 border-b border-yellow-900/30">
+                    <span>Phase 8: Market Analysis & Security Scanner</span>
+                    <span class="px-3 py-1 bg-yellow-500 text-black text-xs rounded">LIVE</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-yellow-900/30">
+                    <span>Phase 7: ML Model Training</span>
+                    <span class="px-3 py-1 bg-yellow-500 text-black text-xs rounded">LIVE</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-yellow-900/30">
+                    <span>Phase 6: CFO Command Layer / CEO Dashboard</span>
+                    <span class="px-3 py-1 bg-green-500 text-white text-xs rounded">DEPLOYED</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-yellow-900/30">
+                    <span>Liquid.Swap Launch</span>
+                    <span class="px-3 py-1 bg-green-500 text-white text-xs rounded">DEPLOYED</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span>LiQUiD SOUND Landing Page</span>
+                    <span class="px-3 py-1 bg-green-500 text-white text-xs rounded">DEPLOYED</span>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
