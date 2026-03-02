@@ -4,6 +4,7 @@ SENTINEL CEO Dashboard - Simple Flask App
 import os
 import json
 import logging
+import asyncio
 from flask import Flask, jsonify, render_template_string
 
 logging.basicConfig(level=logging.INFO)
@@ -70,4 +71,20 @@ def health():
     return "OK"
 
 if __name__ == "__main__":
+    import threading
+    
+    # Start WebSocket listener in background
+    def run_sentinel():
+        try:
+            import sentinel_ph2
+            log.info("Starting SENTINEL WebSocket listener...")
+            asyncio.run(sentinel_ph2.main())
+        except Exception as e:
+            log.error(f"Sentinel error: {e}")
+    
+    sentinel_thread = threading.Thread(target=run_sentinel, daemon=True)
+    sentinel_thread.start()
+    log.info("SENTINEL listener started in background")
+    
+    # Run Flask dashboard
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
