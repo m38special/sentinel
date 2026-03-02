@@ -229,53 +229,66 @@
         const swapStatus = document.getElementById('swapStatus');
 
         // Initialize Wallet
+        const PHANTOM_DEEPLINK = 'https://phantom.app/ul/browse/';
+        
         async function initWallet() {
-            if (typeof window.PhantomWalletAdapter !== 'undefined') {
-                const phantom = new window.PhantomWalletAdapter();
-                wallet = phantom;
-            }
-            
-            // Listen for wallet changes
-            if (wallet) {
-                wallet.on('connect', () => {
+            // Check for Phantom
+            if (window.solana?.isPhantom) {
+                wallet = window.solana;
+                wallet.on('connect', (publicKey) => {
+                    console.log('Phantom connected:', publicKey.toString());
                     document.getElementById('executeSwap').disabled = false;
                     document.getElementById('executeSwap').textContent = 'Swap';
                     updateBalances();
+                    updateWalletUI(wallet.publicKey.toString().slice(0, 4) + '...' + wallet.publicKey.toString().slice(-4));
                 });
-                
                 wallet.on('disconnect', () => {
                     document.getElementById('executeSwap').disabled = true;
                     document.getElementById('executeSwap').textContent = 'Connect Wallet to Swap';
+                    updateWalletUI(null);
                 });
+            }
+        }
+        
+        function updateWalletUI(address) {
+            const container = document.getElementById('walletContainer');
+            if (address) {
+                container.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="px-3 py-1 bg-purple-600 text-white text-xs rounded">${address}</div>
+                        <button onclick="disconnectWallet()" class="text-yellow-500/50 hover:text-yellow-400 text-xs">Disconnect</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="connectWallet()" class="px-6 py-2 border border-yellow-500 text-yellow-500 text-xs tracking-widest uppercase hover:bg-yellow-500 hover:text-black transition">
+                        Connect Wallet
+                    </button>
+                `;
             }
         }
 
         // Connect wallet
         async function connectWallet() {
-            if (!wallet) {
-                // Fallback for demo - use Phantom
+            if (window.solana?.isPhantom) {
                 try {
-                    await window.phantom?.solana?.connect();
-                    document.getElementById('executeSwap').disabled = false;
-                    document.getElementById('executeSwap').textContent = 'Swap';
-                    updateBalances();
-                } catch (e) {
-                    alert('Please install Phantom wallet to swap');
-                }
-            } else {
-                try {
-                    await wallet.connect();
+                    await window.solana.connect({ onlyIfTrusted: false });
                 } catch (e) {
                     console.error('Wallet connection failed:', e);
+                    // Open Phantom app
+                    window.open(PHANTOM_DEEELINK, '_blank');
                 }
+            } else {
+                // Redirect to Phantom download
+                window.open('https://phantom.app/download', '_blank');
             }
         }
-
-        document.getElementById('walletContainer').innerHTML = `
-            <button onclick="connectWallet()" class="px-6 py-2 border border-yellow-500 text-yellow-500 text-xs tracking-widest uppercase hover:bg-yellow-500 hover:text-black transition">
-                Connect Wallet
-            </button>
-        `;
+        
+        async function disconnectWallet() {
+            if (window.solana?.isPhantom) {
+                await window.solana.disconnect();
+            }
+        }
 
         // Get quote from Jupiter
         async function getQuote() {
