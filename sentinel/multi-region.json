@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "name": "liquid-sound-multi-region",
+  "regions": {
+    "us-east": {
+      "provider": "railway",
+      "region": "us",
+      "services": {
+        "sentinel": {"replicas": 3},
+        "celery-worker": {"replicas": 5},
+        "axiom": {"replicas": 2}
+      }
+    },
+    "eu-west": {
+      "provider": "railway",
+      "region": "eu",
+      "services": {
+        "sentinel": {"replicas": 2},
+        "celery-worker": {"replicas": 3}
+      }
+    }
+  },
+  "global": {
+    "redis": {
+      "provider": "upstash",
+      "regions": ["us", "eu"]
+    },
+    "cdn": {
+      "provider": "cloudflare"
+    }
+  },
+  "failover": {
+    "enabled": true,
+    "health_check_interval": 30,
+    "failover_threshold": 3
+  }
+}

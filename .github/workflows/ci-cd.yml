@@ -1,0 +1,68 @@
+name: SENTINEL CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r sentinel/requirements.txt
+          pip install -r requirements.txt
+      
+      - name: Run tests
+        run: |
+          pytest --cov=sentinel --cov=axiom --cov=cipher tests/
+      
+      - name: Lint
+        run: |
+          flake8 sentinel/axiom/cipher --max-line-length=100
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Docker
+        run: |
+          docker build -t sentinel:${{ github.sha }} ./sentinel
+      
+      - name: Run container health check
+        run: |
+          docker run -d --name test-sentinel sentinel:${{ github.sha }}
+          sleep 5
+          docker logs test-sentinel
+          docker rm -f test-sentinel
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway deploy --project=${{ secrets.RAILWAY_PROJECT }}
+      
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author
