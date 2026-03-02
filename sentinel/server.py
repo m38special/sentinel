@@ -74,6 +74,9 @@ def health():
 def ml_train():
     """Trigger ML training pipeline"""
     try:
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         from sentinel.tasks.ml_pipeline import run_full_training_pipeline
         result = run_full_training_pipeline.delay(7)
         return jsonify({"status": "queued", "task_id": result.id})
