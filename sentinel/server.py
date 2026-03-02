@@ -70,6 +70,19 @@ def dashboard_data():
 def health():
     return "OK"
 
+@app.route('/api/market/analyze')
+def market_analyze():
+    """Run market analysis and simulation"""
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("market_analysis", "/app/tasks/market_analysis.py")
+        ma_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ma_module)
+        result = ma_module.generate_market_report()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/ml/train')
 def ml_train():
     """Trigger ML training pipeline"""
