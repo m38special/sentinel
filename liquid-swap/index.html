@@ -6,6 +6,10 @@
     <title>Liquid.Swap | Solana Token Exchange</title>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@solana/wallet-adapter-adapter@0.9.25/lib/index.iife.js"></script>
+    <script src="https://unpkg.com/@solana/wallet-adapter-react@0.15.35/lib/index.iife.js"></script>
+    <script src="https://unpkg.com/@jup-ag/core@0.4.0/lib/index.iife.js"></script>
+    <script src="https://unpkg.com/@solana/web3.js@1.91.8/lib/index.iife.js"></script>
     <style>
         :root {
             --gold: #c9a227;
@@ -19,29 +23,11 @@
             background: var(--black);
             color: var(--cream);
         }
-        .font-display {
-            font-family: 'Cormorant Garamond', serif;
-        }
+        .font-display { font-family: 'Cormorant Garamond', serif; }
         .gold-gradient {
             background: linear-gradient(135deg, var(--gold), var(--gold-light));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-        }
-        .gold-border {
-            border: 1px solid var(--gold);
-        }
-        .gold-border:hover {
-            background: var(--gold);
-            color: var(--black);
-        }
-        .input-gold {
-            background: transparent;
-            border: 1px solid rgba(201, 162, 39, 0.3);
-            color: var(--cream);
-        }
-        .input-gold:focus {
-            border-color: var(--gold);
-            outline: none;
         }
     </style>
 </head>
@@ -53,14 +39,12 @@
             <div class="flex items-center gap-4">
                 <button class="text-xs tracking-widest uppercase text-yellow-500/70 hover:text-yellow-400">Tokens</button>
                 <button class="text-xs tracking-widest uppercase text-yellow-500/70 hover:text-yellow-400">Pool</button>
-                <button id="connectWallet" class="px-6 py-2 border border-yellow-500 text-yellow-500 text-xs tracking-widest uppercase hover:bg-yellow-500 hover:text-black transition">
-                    Connect Wallet
-                </button>
+                <div id="walletContainer"></div>
             </div>
         </div>
     </header>
 
-    <!-- Hero / Swap Interface -->
+    <!-- Main Swap Interface -->
     <main class="max-w-7xl mx-auto px-6 py-12">
         <div class="max-w-lg mx-auto">
             <div class="text-center mb-8">
@@ -74,11 +58,11 @@
                 <div class="mb-2">
                     <div class="flex justify-between text-xs text-yellow-500/50 mb-2">
                         <span>You Pay</span>
-                        <span>Balance: <span id="fromBalance">0.00</span></span>
+                        <span>Balance: <span id="fromBalance">--</span></span>
                     </div>
                     <div class="flex items-center gap-3 bg-[#0a0a0a] border border-yellow-900/30 rounded-lg p-4">
                         <button id="fromTokenBtn" class="flex items-center gap-2 min-w-[120px]">
-                            <div class="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500 font-bold">S</div>
+                            <div id="fromTokenIcon" class="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500 font-bold">S</div>
                             <span class="font-medium" id="fromToken">SOL</span>
                             <svg class="w-4 h-4 text-yellow-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                         </button>
@@ -97,11 +81,11 @@
                 <div class="mb-4">
                     <div class="flex justify-between text-xs text-yellow-500/50 mb-2">
                         <span>You Receive</span>
-                        <span>Balance: <span id="toBalance">0.00</span></span>
+                        <span>Balance: <span id="toBalance">--</span></span>
                     </div>
                     <div class="flex items-center gap-3 bg-[#0a0a0a] border border-yellow-900/30 rounded-lg p-4">
                         <button id="toTokenBtn" class="flex items-center gap-2 min-w-[120px]">
-                            <div class="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500 font-bold">U</div>
+                            <div id="toTokenIcon" class="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500 font-bold">U</div>
                             <span class="font-medium" id="toToken">USDC</span>
                             <svg class="w-4 h-4 text-yellow-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                         </button>
@@ -113,11 +97,11 @@
                 <div class="border-t border-yellow-900/30 pt-4 mt-4">
                     <div class="flex justify-between text-xs text-yellow-500/70">
                         <span>Rate</span>
-                        <span id="exchangeRate">1 SOL = 95.42 USDC</span>
+                        <span id="exchangeRate">--</span>
                     </div>
                     <div class="flex justify-between text-xs text-yellow-500/70 mt-2">
                         <span>Price Impact</span>
-                        <span id="priceImpact" class="text-green-500">0.01%</span>
+                        <span id="priceImpact" class="text-green-500">--</span>
                     </div>
                     <div class="flex justify-between text-xs text-yellow-500/70 mt-2">
                         <span>Slippage</span>
@@ -129,27 +113,14 @@
                     </div>
                 </div>
 
-                <!-- Swap Button -->
+                <!-- Execute Swap -->
                 <button id="executeSwap" class="w-full mt-6 py-4 bg-yellow-500 text-black font-medium tracking-widest uppercase hover:bg-yellow-400 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                     Connect Wallet to Swap
                 </button>
             </div>
 
-            <!-- Stats -->
-            <div class="grid grid-cols-3 gap-4 mt-8">
-                <div class="text-center">
-                    <div class="text-2xl font-display text-yellow-500">$2.4M</div>
-                    <div class="text-xs text-yellow-500/50 mt-1">24h Volume</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-display text-yellow-500">15K+</div>
-                    <div class="text-xs text-yellow-500/50 mt-1">Traders</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-display text-yellow-500">50+</div>
-                    <div class="text-xs text-yellow-500/50 mt-1">Token Pairs</div>
-                </div>
-            </div>
+            <!-- Loading/Status -->
+            <div id="swapStatus" class="text-center mt-4 text-sm text-yellow-500/70 hidden"></div>
         </div>
     </main>
 
@@ -163,14 +134,15 @@
             <div class="p-4">
                 <input type="text" id="tokenSearch" placeholder="Search tokens..." class="w-full bg-[#0a0a0a] border border-yellow-900/30 rounded-lg px-4 py-3 text-sm outline-none focus:border-yellow-500">
             </div>
-            <div id="tokenList" class="max-h-80 overflow-y-auto">
-                <!-- Tokens will be populated here -->
-            </div>
+            <div id="tokenList" class="max-h-80 overflow-y-auto"></div>
         </div>
     </div>
 
     <script>
-        // Token Data
+        // Jupiter API integration
+        const JUPITER_API = 'https://quote-api.jup.ag/v6';
+        
+        // Token data with mint addresses
         const TOKENS = [
             { symbol: 'SOL', name: 'Solana', mint: 'So11111111111111111111111111111111111111112', decimals: 9, logo: 'S' },
             { symbol: 'USDC', name: 'USD Coin', mint: 'EPjFWdd5AufqSSVqM46uMfchR9gN8QqMKSdefch', decimals: 6, logo: 'U' },
@@ -187,7 +159,9 @@
         let fromToken = TOKENS[0];
         let toToken = TOKENS[1];
         let slippage = 1;
-        let walletConnected = false;
+        let wallet = null;
+        let connection = null;
+        let quote = null;
 
         // DOM Elements
         const fromTokenBtn = document.getElementById('fromTokenBtn');
@@ -197,11 +171,133 @@
         const fromAmount = document.getElementById('fromAmount');
         const toAmount = document.getElementById('toAmount');
         const swapBtn = document.getElementById('swapBtn');
-        const connectWallet = document.getElementById('connectWallet');
         const executeSwap = document.getElementById('executeSwap');
-        const slippageBtns = document.querySelectorAll('.slippage-btn');
+        const swapStatus = document.getElementById('swapStatus');
 
-        // Populate token list
+        // Initialize Wallet
+        async function initWallet() {
+            if (typeof window.PhantomWalletAdapter !== 'undefined') {
+                const phantom = new window.PhantomWalletAdapter();
+                wallet = phantom;
+            }
+            
+            // Listen for wallet changes
+            if (wallet) {
+                wallet.on('connect', () => {
+                    document.getElementById('executeSwap').disabled = false;
+                    document.getElementById('executeSwap').textContent = 'Swap';
+                    updateBalances();
+                });
+                
+                wallet.on('disconnect', () => {
+                    document.getElementById('executeSwap').disabled = true;
+                    document.getElementById('executeSwap').textContent = 'Connect Wallet to Swap';
+                });
+            }
+        }
+
+        // Connect wallet
+        async function connectWallet() {
+            if (!wallet) {
+                // Fallback for demo - use Phantom
+                try {
+                    await window.phantom?.solana?.connect();
+                    document.getElementById('executeSwap').disabled = false;
+                    document.getElementById('executeSwap').textContent = 'Swap';
+                    updateBalances();
+                } catch (e) {
+                    alert('Please install Phantom wallet to swap');
+                }
+            } else {
+                try {
+                    await wallet.connect();
+                } catch (e) {
+                    console.error('Wallet connection failed:', e);
+                }
+            }
+        }
+
+        document.getElementById('walletContainer').innerHTML = `
+            <button onclick="connectWallet()" class="px-6 py-2 border border-yellow-500 text-yellow-500 text-xs tracking-widest uppercase hover:bg-yellow-500 hover:text-black transition">
+                Connect Wallet
+            </button>
+        `;
+
+        // Get quote from Jupiter
+        async function getQuote() {
+            if (!fromAmount.value || parseFloat(fromAmount.value) <= 0) return;
+            
+            try {
+                const amount = Math.floor(parseFloat(fromAmount.value) * Math.pow(10, fromToken.decimals));
+                const response = await fetch(
+                    `${JUPITER_API}/quote?inputMint=${fromToken.mint}&outputMint=${toToken.mint}&amount=${amount}&slippage=${slippage}`
+                );
+                
+                if (!response.ok) throw new Error('Quote failed');
+                
+                quote = await response.json();
+                
+                const outAmount = quote.outAmount / Math.pow(10, toToken.decimals);
+                toAmount.value = outAmount.toFixed(toToken.decimals);
+                
+                // Update rate display
+                const rate = outAmount / parseFloat(fromAmount.value);
+                document.getElementById('exchangeRate').textContent = `1 ${fromToken.symbol} = ${rate.toFixed(4)} ${toToken.symbol}`;
+                
+                // Price impact
+                document.getElementById('priceImpact').textContent = (quote.priceImpactPct || 0) + '%';
+                
+            } catch (e) {
+                console.error('Quote error:', e);
+                swapStatus.textContent = 'Failed to get quote';
+                swapStatus.classList.remove('hidden');
+            }
+        }
+
+        // Execute swap
+        async function executeSwapTx() {
+            if (!wallet || !quote) return;
+            
+            try {
+                swapStatus.textContent = 'Preparing transaction...';
+                swapStatus.classList.remove('hidden');
+                
+                // Get swap transactions
+                const response = await fetch(`${JUPITER_API}/swap`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        quoteResponse: quote,
+                        userPublicKey: wallet.publicKey?.toString() || window.phantom?.solana?.publicKey?.toString(),
+                        wrapUnwrapSOL: true
+                    })
+                });
+                
+                const { swapTransaction } = await response.json();
+                
+                // Deserialize and sign
+                const swapTx = window.solanaWeb3.VersionedTransaction.deserialize(
+                    Uint8Array.from(atob(swapTransaction), c => c.charCodeAt(0))
+                );
+                
+                // Sign (this would normally use wallet)
+                // For demo, show success
+                swapStatus.textContent = 'Transaction prepared! (Demo mode)';
+                
+            } catch (e) {
+                console.error('Swap error:', e);
+                swapStatus.textContent = 'Swap failed: ' + e.message;
+            }
+        }
+
+        // Update token balances
+        async function updateBalances() {
+            // Would fetch from Solana - placeholder for demo
+            document.getElementById('fromBalance').textContent = '12.45';
+            document.getElementById('toBalance').textContent = '1,234.56';
+        }
+
+        // Render token list
         function renderTokenList(filter = '') {
             const filtered = TOKENS.filter(t => 
                 t.symbol.toLowerCase().includes(filter.toLowerCase()) ||
@@ -222,7 +318,6 @@
         let selectingFrom = true;
         fromTokenBtn.addEventListener('click', () => { selectingFrom = true; renderTokenList(); tokenModal.classList.remove('hidden'); });
         toTokenBtn.addEventListener('click', () => { selectingFrom = false; renderTokenList(); tokenModal.classList.remove('hidden'); });
-
         document.getElementById('closeModal').addEventListener('click', () => tokenModal.classList.add('hidden'));
         tokenModal.addEventListener('click', (e) => { if (e.target === tokenModal) tokenModal.classList.add('hidden'); });
 
@@ -234,65 +329,54 @@
                 if (selectingFrom) {
                     fromToken = token;
                     document.getElementById('fromToken').textContent = token.symbol;
+                    document.getElementById('fromTokenIcon').textContent = token.logo;
                 } else {
                     toToken = token;
                     document.getElementById('toToken').textContent = token.symbol;
+                    document.getElementById('toTokenIcon').textContent = token.logo;
                 }
                 tokenModal.classList.add('hidden');
-                updateQuote();
+                getQuote();
             }
         });
 
         document.getElementById('tokenSearch').addEventListener('input', (e) => renderTokenList(e.target.value));
 
-        // Swap
+        // Swap tokens
         swapBtn.addEventListener('click', () => {
             const temp = fromToken;
             fromToken = toToken;
             toToken = temp;
             document.getElementById('fromToken').textContent = fromToken.symbol;
             document.getElementById('toToken').textContent = toToken.symbol;
-            updateQuote();
+            document.getElementById('fromTokenIcon').textContent = fromToken.logo;
+            document.getElementById('toTokenIcon').textContent = toToken.logo;
+            getQuote();
         });
 
         // Slippage
-        slippageBtns.forEach(btn => {
+        document.querySelectorAll('.slippage-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                slippageBtns.forEach(b => { b.classList.remove('border-yellow-500', 'text-yellow-500'); b.classList.add('border-yellow-500/30', 'text-yellow-500/70'); });
+                document.querySelectorAll('.slippage-btn').forEach(b => { 
+                    b.classList.remove('border-yellow-500', 'text-yellow-500'); 
+                    b.classList.add('border-yellow-500/30', 'text-yellow-500/70'); 
+                });
                 btn.classList.add('border-yellow-500', 'text-yellow-500');
                 btn.classList.remove('border-yellow-500/30', 'text-yellow-500/70');
                 slippage = parseFloat(btn.dataset.value);
+                getQuote();
             });
         });
 
-        // Quote update (mock for demo)
-        function updateQuote() {
-            if (fromAmount.value) {
-                // Mock rate - in production, call Jupiter API
-                const rate = fromToken.symbol === 'SOL' && toToken.symbol === 'USDC' ? 95.42 : 
-                             fromToken.symbol === 'USDC' && toToken.symbol === 'SOL' ? 0.0105 : 1;
-                toAmount.value = (parseFloat(fromAmount.value) * rate).toFixed(2);
-                document.getElementById('exchangeRate').textContent = `1 ${fromToken.symbol} = ${rate.toFixed(4)} ${toToken.symbol}`;
-            }
-        }
-        fromAmount.addEventListener('input', updateQuote);
+        // Quote on amount change
+        fromAmount.addEventListener('input', getQuote);
 
-        // Wallet connection (mock)
-        connectWallet.addEventListener('click', () => {
-            walletConnected = true;
-            connectWallet.textContent = 'Wallet Connected';
-            connectWallet.classList.add('bg-yellow-500', 'text-black');
-            executeSwap.textContent = 'Swap';
-            executeSwap.disabled = false;
-        });
-
-        executeSwap.addEventListener('click', () => {
-            if (!walletConnected) return;
-            alert('Swap executed! (Demo - requires wallet integration)');
-        });
+        // Execute swap
+        executeSwap.addEventListener('click', executeSwapTx);
 
         // Initialize
         renderTokenList();
+        initWallet();
     </script>
 </body>
 </html>
