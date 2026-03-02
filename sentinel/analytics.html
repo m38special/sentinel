@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL Analytics | LiQUiD SOUND</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --gold: #c9a227; --gold-light: #e8d48a; --black: #0a0a0a; --cream: #f5f0e6; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--black); color: var(--cream); }
+        .font-display { font-family: 'Cormorant Garamond', serif; }
+        .gold-gradient { background: linear-gradient(135deg, var(--gold), var(--gold-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card { background: linear-gradient(145deg, #151515 0%, #0d0d0d 100%); border: 1px solid rgba(201, 162, 39, 0.1); }
+        .signal-critical { background: #dc2626; }
+        .signal-high { background: #f59e0b; }
+        .signal-medium { background: #3b82f6; }
+        .signal-low { background: #22c55e; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <header class="border-b border-yellow-900/30">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="font-display text-2xl tracking-widest gold-gradient">SENTINEL ANALYTICS</div>
+            <div class="flex gap-4">
+                <a href="/" class="text-xs text-yellow-500/50 hover:text-yellow-400">Dashboard</a>
+                <button onclick="refreshAll()" class="px-4 py-2 bg-yellow-500 text-black text-xs rounded hover:bg-yellow-400">Refresh</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-4 gap-4 mb-8">
+            <div class="card rounded-xl p-6 text-center">
+                <div class="text-3xl font-display text-yellow-500" id="tokenCount">--</div>
+                <div class="text-xs text-yellow-500/50 mt-2">Tokens Scanned</div>
+            </div>
+            <div class="card rounded-xl p-6 text-center">
+                <div class="text-3xl font-display text-yellow-500" id="highSignals">--</div>
+                <div class="text-xs text-yellow-500/50 mt-2">High Signals</div>
+            </div>
+            <div class="card rounded-xl p-6 text-center">
+                <div class="text-3xl font-display text-yellow-500" id="fearGreed">--</div>
+                <div class="text-xs text-yellow-500/50 mt-2">Fear & Greed</div>
+            </div>
+            <div class="card rounded-xl p-6 text-center">
+                <div class="text-3xl font-display text-yellow-500" id="solPrice">--</div>
+                <div class="text-xs text-yellow-500/50 mt-2">SOL Price</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6">
+            <!-- Market Analysis -->
+            <div class="card rounded-xl p-6">
+                <h2 class="font-display text-xl mb-4">🧠 Market Analysis</h2>
+                <div id="marketData" class="space-y-3">
+                    <div class="text-yellow-500/50">Loading...</div>
+                </div>
+            </div>
+
+            <!-- ML Predictions -->
+            <div class="card rounded-xl p-6">
+                <h2 class="font-display text-xl mb-4">🎯 ML Predictions</h2>
+                <div id="predictions" class="space-y-3">
+                    <div class="text-yellow-500/50">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="card rounded-xl p-6 mt-6">
+            <h2 class="font-display text-xl mb-4">💡 Recommendations</h2>
+            <div id="recommendations" class="flex gap-4 flex-wrap">
+                <div class="text-yellow-500/50">Loading...</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function fetchMarket() {
+            try {
+                const res = await fetch('/api/market/analyze');
+                const data = await res.json();
+                
+                document.getElementById('fearGreed').textContent = data.fear_greed_index || '--';
+                document.getElementById('solPrice').textContent = '$' + (data.solana?.price?.toFixed(2) || '--');
+                
+                const marketDiv = document.getElementById('marketData');
+                marketDiv.innerHTML = `
+                    <div class="flex justify-between"><span>Sentiment</span><span class="text-yellow-500">${data.sentiment || 'neutral'}</span></div>
+                    <div class="flex justify-between"><span>Top Coins</span><span>${data.top_coins?.length || 0}</span></div>
+                `;
+                
+                const recDiv = document.getElementById('recommendations');
+                if (data.recommendations?.length) {
+                    recDiv.innerHTML = data.recommendations.map(r => 
+                        `<div class="px-4 py-2 bg-yellow-500/20 border border-yellow-500/30 rounded">${r.action}: ${r.reason}</div>`
+                    ).join('');
+                } else {
+                    recDiv.innerHTML = '<div class="text-yellow-500/50">No recommendations yet</div>';
+                }
+            } catch (e) {
+                console.error('Market error:', e);
+            }
+        }
+
+        async function fetchPredictions() {
+            try {
+                const res = await fetch('/api/ml/predictions');
+                const data = await res.json();
+                
+                document.getElementById('highSignals').textContent = data.predictions?.filter(p => p.signal === 'HIGH' || p.signal === 'CRITICAL').length || 0;
+                document.getElementById('tokenCount').textContent = data.predictions?.length || 0;
+                
+                const predDiv = document.getElementById('predictions');
+                if (data.predictions?.length) {
+                    predDiv.innerHTML = data.predictions.slice(0, 5).map(p => {
+                        const color = p.signal === 'CRITICAL' ? 'signal-critical' : p.signal === 'HIGH' ? 'signal-high' : p.signal === 'MEDIUM' ? 'signal-medium' : 'signal-low';
+                        return `<div class="flex justify-between items-center p-3 rounded ${color} bg-opacity-20">
+                            <span class="font-medium">${p.token}</span>
+                            <span class="text-sm">${p.signal} (${p.score})</span>
+                        </div>`;
+                    }).join('');
+                } else {
+                    predDiv.innerHTML = '<div class="text-yellow-500/50">No predictions yet</div>';
+                }
+            } catch (e) {
+                console.error('Predictions error:', e);
+            }
+        }
+
+        async function refreshAll() {
+            await Promise.all([fetchMarket(), fetchPredictions()]);
+        }
+
+        refreshAll();
+        setInterval(refreshAll, 60000);
+    </script>
+</body>
+</html>
