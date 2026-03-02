@@ -1,126 +1,121 @@
 """
-Phase 7 - ML Model Training Tasks
-SENTINEL | LiQUiD SOUND
-Standalone version - no celery tasks, direct execution
+Enhanced ML Pipeline
+SENTINEL Phase 7 | LiQUiD SOUND
 """
 import os
 import json
 import logging
 from datetime import datetime, timedelta
 import redis
+from tasks import app
 
 log = logging.getLogger(__name__)
-
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 
-def collect_training_data(lookback_days: int = 30):
-    """Collect historical token data for ML training."""
+def get_token_data():
+    """Fetch token data from Redis"""
     r = redis.from_url(REDIS_URL, decode_responses=True)
-    
-    training_data = []
-    end_date = datetime.utcnow().date()
-    
-    for i in range(lookback_days):
-        date = end_date - timedelta(days=i)
-        date_str = date.strftime("%Y-%m-%d")
-        
-        keys = r.keys(f"token:*:{date_str}")
-        
-        for key in keys:
-            token_data = r.hgetall(key)
-            if token_data:
-                training_data.append(token_data)
-    
-    r.set("ml:training_data:pending", json.dumps(training_data))
-    log.info(f"Collected {len(training_data)} samples for training")
-    
-    return {"samples": len(training_data), "date_range": f"{lookback_days} days"}
+    tokens = []
+    for key in r.keys("token:*"):
+        data = r.hgetall(key)
+        if data:
+            tokens.append(data)
+    return tokens
 
 
-def train_signal_model():
-    """Train the token signal prediction model."""
-    r = redis.from_url(REDIS_URL, decode_responses=True)
-    
-    data_json = r.get("ml:training_data:pending")
-    if not data_json:
-        return {"status": "no_data", "message": "No training data available"}
-    
-    training_data = json.loads(data_json)
-    
-    if len(training_data) < 100:
-        return {"status": "insufficient_data", "samples": len(training_data)}
-    
-    feature_names = [
-        "liquidity_usd", "holder_count", "top10_concentration",
-        "volume_24h", "price_change_1h", "social_score", "momentum"
-    ]
-    
-    X = []
-    y = []
-    
-    for record in training_data:
+def analyze_token_features(tokens):
+    """Extract ML features from tokens"""
+    features = []
+    for t in tokens:
         try:
-            features = [float(record.get(f, 0) or 0) for f in feature_names]
-            X.append(features)
-            label = 1 if record.get("signal_level") in ["HIGH", "CRITICAL"] else 0
-            y.append(label)
-        except (ValueError, TypeError):
+            feature = {
+                'liquidity_usd': float(t.get('liquidity_usd', 0) or 0),
+                'holder_count': int(t.get('holder_count', 0) or 0),
+                'volume_24h': float(t.get('volume_24h', 0) or 0),
+                'price_change_1h': float(t.get('price_change_1h', 0) or 0),
+                'price_change_24h': float(t.get('price_change_24h', 0) or 0),
+                'social_score': int(t.get('social_score', 0) or 0),
+                'momentum': float(t.get('momentum', 0) or 0),
+            }
+            features.append(feature)
+        except:
             continue
+    return features
+
+
+def predict_signals():
+    """Predict trading signals based on features"""
+    r = redis.from_url(REDIS_URL, decode_responses=True)
+    tokens = get_token_data()
+    features = analyze_token_features(tokens)
     
-    if len(X) < 50:
-        return {"status": "insufficient_valid_data", "samples": len(X)}
+    predictions = []
+    for i, (token, feature) in enumerate(zip(tokens, features)):
+        # Simple rule-based scoring (replace with ML model)
+        score = 0
+        if feature['liquidity_usd'] > 10000: score += 20
+        if feature['holder_count'] > 100: score += 15
+        if feature['volume_24h'] > 50000: score += 15
+        if feature['price_change_1h'] > 5: score += 20
+        if feature['price_change_1h'] < -5: score += 10
+        if feature['social_score'] > 50: score += 15
+        if feature['momentum'] > 0.5: score += 15
+        
+        if score >= 85:
+            signal = 'CRITICAL'
+        elif score >= 70:
+            signal = 'HIGH'
+        elif score >= 50:
+            signal = 'MEDIUM'
+        else:
+            signal = 'LOW'
+        
+        predictions.append({
+            'token': token.get('symbol', token.get('mint', 'UNKNOWN')),
+            'score': score,
+            'signal': signal,
+            'features': feature
+        })
     
-    try:
-        import numpy as np
-        X = np.array(X)
-        y = np.array(y)
-    except ImportError:
-        return {"error": "numpy not installed"}
+    # Store predictions
+    r.set('ml:predictions:latest', json.dumps(predictions))
+    return predictions
+
+
+@app.task(name='tasks.ml_pipeline.run_predictions', bind=True, max_retries=2, queue='sentinel')
+def run_predictions(self):
+    """Generate token predictions"""
+    predictions = predict_signals()
+    return {'predictions': len(predictions), 'signals': [p['signal'] for p in predictions]}
+
+
+@app.task(name='tasks.ml_pipeline.collect_and_predict', bind=True, max_retries=1, queue='sentinel')
+def collect_and_predict(self):
+    """Full ML pipeline: collect data + predict"""
+    tokens = get_token_data()
+    predictions = predict_signals()
     
-    # Split
-    try:
-        from sklearn.model_selection import train_test_split
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    except ImportError:
-        return {"error": "sklearn not installed"}
-    
-    # Train
-    try:
-        from sklearn.ensemble import RandomForestClassifier
-        model = RandomForestClassifier(n_estimators=100, random_state=42)
-        model.fit(X_train, y_train)
-    except ImportError:
-        return {"error": "sklearn not installed"}
-    
-    train_score = model.score(X_train, y_train)
-    test_score = model.score(X_test, y_test)
-    
-    model_info = {
-        "trained_at": datetime.utcnow().isoformat(),
-        "train_samples": len(X_train),
-        "test_samples": len(X_test),
-        "train_accuracy": float(train_score),
-        "test_accuracy": float(test_score),
-        "feature_names": feature_names
+    return {
+        'tokens_collected': len(tokens),
+        'predictions': len(predictions),
+        'high_signals': len([p for p in predictions if p['signal'] in ['HIGH', 'CRITICAL']])
     }
-    
-    r.set("ml:model:signal:info", json.dumps(model_info))
-    log.info(f"Model trained: train={train_score:.3f}, test={test_score:.3f}")
-    
-    return {"status": "trained", "train_accuracy": train_score, "test_accuracy": test_score}
 
 
-def run_full_training_pipeline(lookback_days: int = 30):
-    """Full ML training pipeline."""
-    log.info("Starting ML training pipeline...")
-    
-    # Step 1: Collect data
-    result1 = collect_training_data(lookback_days)
-    if result1.get("samples", 0) < 50:
-        return {"status": "insufficient_data", **result1}
-    
-    # Step 2: Train
-    result2 = train_signal_model()
-    
-    return {"collection": result1, "training": result2}
+# Schedule: Every 15 minutes
+from celery.schedules import crontab
+
+app.conf.beat_schedule = {
+    **app.conf.beat_schedule,
+    "ml-predictions-15min": {
+        "task": "tasks.ml_pipeline.run_predictions",
+        "schedule": crontab(minute="*/15"),
+        "options": {"queue": "sentinel"},
+    },
+}
+
+
+if __name__ == "__main__":
+    result = predict_signals()
+    print(json.dumps(result[:5], indent=2))

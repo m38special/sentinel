@@ -140,8 +140,21 @@ def market_analyze():
         spec = importlib.util.spec_from_file_location("market_analysis", "/app/tasks/market_analysis.py")
         ma_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(ma_module)
-        result = ma_module.generate_market_report()
+        result = ma_module.analyze_market()
         return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ml/predictions')
+def ml_predictions():
+    """Get ML predictions"""
+    try:
+        import redis
+        r = redis.from_url(REDIS_URL, decode_responses=True)
+        predictions = r.get('ml:predictions:latest')
+        if predictions:
+            return jsonify(json.loads(predictions))
+        return jsonify({"predictions": [], "message": "No predictions yet"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
