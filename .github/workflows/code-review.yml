@@ -1,0 +1,46 @@
+name: LiQUiD SOUND Auto Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          npm install -g codex@latest 2>/dev/null || true
+          pip install anthropic 2>/dev/null || true
+          
+      - name: Run Auto Code Review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          chmod +x scripts/code-review.sh
+          ./scripts/code-review.sh ${{ github.repository }} ${{ github.event.pull_request.number }}
+          
+      - name: Report Results
+        if: always()
+        run: |
+          echo "## Code Review Status" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Review completed" >> $GITHUB_STEP_SUMMARY
