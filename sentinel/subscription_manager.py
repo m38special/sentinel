@@ -48,6 +48,12 @@ class SubscriptionManager:
     
     def create_subscription(self, user_id: str, tier: str) -> Dict:
         """Create new subscription"""
+        # Input validation
+        if not user_id or not isinstance(user_id, str) or len(user_id) > 100:
+            return {"error": "Invalid user_id"}
+        
+        if not tier or tier.upper() not in [t.name for t in Tier]:
+            return {"error": "Invalid tier"}
         tier_enum = Tier[tier.upper()]
         
         sub = {

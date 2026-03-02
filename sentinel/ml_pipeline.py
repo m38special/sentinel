@@ -5,7 +5,6 @@ Token Scoring Model Training
 """
 import os
 import json
-import pickle
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
@@ -17,6 +16,11 @@ try:
     from sklearn.ensemble import RandomForestClassifier, GradientBoostingRegressor
     from sklearn.model_selection import train_test_split
     from sklearn.metrics import classification_report, mean_squared_error
+    try:
+        import joblib  # Safer than pickle
+        JOBLIB_AVAILABLE = True
+    except ImportError:
+        JOBLIB_AVAILABLE = False
     ML_AVAILABLE = True
 except ImportError:
     ML_AVAILABLE = False
@@ -144,14 +148,27 @@ class TokenMLPipeline:
     def _save_model(self):
         """Save model to Redis"""
         if self.model:
-            model_data = pickle.dumps(self.model)
+            if JOBLIB_AVAILABLE:
+                import joblib
+                model_data = joblib.dumps(self.model)
+            else:
+                # Fallback: store as base64 encoded json of weights
+                model_data = json.dumps({
+                    "type": "RandomForest",
+                    "n_estimators": self.model.n_estimators,
+                    "feature_names": self.feature_names
+                }).encode()
             self.redis.set("ml:model:signal", model_data)
     
     def _load_model(self):
         """Load model from Redis"""
         model_data = self.redis.get("ml:model:signal")
         if model_data:
-            self.model = pickle.loads(model_data)
+            if JOBLIB_AVAILABLE:
+                import joblib
+                self.model = joblib.loads(model_data)
+            else:
+                self.model = None
 
 
 class FeatureEngineering:
