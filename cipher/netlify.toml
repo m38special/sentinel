@@ -1,0 +1,17 @@
+[[forms]]
+  name = "lead"
+  path = "/contact"
+
+[[forms]]
+  name = "contact"
+  path = "/contact"
+
+[build]
+  publish = "."
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Netlify Analytics (optional - enables privacy-friendly analytics)
+[context.production]
+  environment = { NETLIFY_ANALYTICS = "1" }

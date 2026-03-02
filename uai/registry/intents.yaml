@@ -1,0 +1,131 @@
+# UAI Intent Registry v0.2
+# Maps intent prefixes to owning agents + routing rules
+# Format: intent_prefix → agent | fallback | broadcast
+#
+# Phase 4 Status: ✅ Active
+# Phase 5 Status: ✅ Complete
+# Phase 6 Status: ✅ Complete (CFO Command Layer)
+
+intents:
+
+  analyze:
+    owner: axiom
+    description: Quantitative analysis, risk models, market signals, backtesting
+    examples:
+      - analyze.market_signal       # Score a new token signal
+      - analyze.risk_score          # Risk-score a position or portfolio
+      - analyze.backtest            # Run historical strategy test
+      - analyze.correlation         # Cross-asset correlation analysis
+      - analyze.volatility          # Vol surface / regime analysis
+    fallback: maxwell
+
+  security:
+    owner: cipher
+    description: Security audits, threat detection, contract red flags
+    examples:
+      - security.audit              # Full code/contract audit
+      - security.threat_flag        # Flag a security concern
+      - security.contract_review    # Smart contract review
+    fallback: urahara
+
+  social:
+    owner: nova
+    description: Social signals, trend analysis, influencer content, community sentiment
+    examples:
+      - social.trend_report         # What's trending now
+      - social.content_brief        # Generate content brief for a topic
+      - social.sentiment            # Community sentiment on a token/topic
+      - social.influencer_map       # Map key influencers for a narrative
+    fallback: maxwell
+
+  signal:
+    owner: sentinel
+    description: Token signals, high-score alerts, risk flags
+    examples:
+      - signal.new_token            # New token detected
+      - signal.high_score          # Token scored above threshold
+      - signal.risk_flag           # Risk flag detected
+    fallback: maxwell
+
+  approve:
+    owner: yoruichi
+    description: Approval gate for content, trade signals, high-score alerts (≥85)
+    examples:
+      - approve.content_draft       # Content draft pending approval
+      - approve.trade_signal       # Trade signal pending approval
+      - approve.alert              # High-score alert pending approval
+    fallback: maxwell
+
+  report:
+    owner: maxwell
+    description: Executive summaries, CEO briefings, cross-agent synthesis
+    examples:
+      - report.executive_summary    # Synthesize multi-agent output into exec summary
+      - report.daily_brief          # Morning brief for CEO
+      - report.alert_summary        # Summarize recent alerts
+      - report.content_draft        # Content draft for approval
+    fallback: maxwell
+
+  broadcast:
+    owner: system
+    description: System-wide events delivered to all agents
+    examples:
+      - broadcast.system_event      # Platform-level notification
+      - broadcast.market_open       # Market open trigger
+      - broadcast.emergency         # Emergency escalation to all agents
+      - broadcast.approve           # Content approved
+      - broadcast.reject            # Content rejected
+    fallback: null  # All agents receive, no fallback needed
+
+# Redis Event Channels (pub/sub)
+event_channels:
+  uai:events:token_signal:
+    publisher: sentinel
+    subscribers: [axiom, nova, yoruichi]
+    description: New Pump.fun token detected above threshold
+    status: live
+
+  uai:events:security_alert:
+    publisher: sentinel
+    subscribers: [cipher, yoruichi, urahara]
+    description: Security threat or red flag detected
+    status: live
+
+  uai:events:social_signal:
+    publisher: nova
+    subscribers: [sentinel, axiom]
+    description: NOVA social velocity score
+    status: live
+
+  uai:events:content_review:
+    publisher: system
+    subscribers: [yoruichi]
+    description: Content draft pending approval
+    status: live  # Phase 5
+
+  uai:events:ceo_dashboard:
+    publisher: yoruichi
+    subscribers: [ceo]
+    description: CEO dashboard feed, executive summaries
+    status: live  # Phase 6
+
+  uai:events:market_update:
+    publisher: yoruichi
+    publisher: yoruichi
+    subscribers: [axiom, nova, cipher, urahara]
+    description: Market condition update or macro event
+    status: pending  # Phase 6
+
+  uai:broadcast:
+    publisher: any
+    subscribers: [maxwell, urahara, cipher, nova, axiom, yoruichi]
+    description: System-wide broadcast, all agents listen
+    status: live
+
+# ACK Protocol
+ack:
+  key_pattern: "uai:ack:{message_id}"
+  states: [queued, in_progress, done, failed, blocked]
+  escalation_target: maxwell
+  escalation_trigger: TTL expiry without terminal state (done|failed|blocked)
+  ttl_default: 300

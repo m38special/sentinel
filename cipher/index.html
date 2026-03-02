@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CIPHER Security | Enterprise Cybersecurity Solutions</title>
+  <style>
+    :root {
+      --primary: #00C853;
+      --primary-dark: #00A844;
+      --accent: #4A90D9;
+      --critical: #FF4444;
+      --bg: #0D1117;
+      --panel: #161B22;
+      --text-primary: #E6EDF3;
+      --text-secondary: #8B949E;
+      --border: #30363D;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo-section { display: flex; align-items: center; gap: 12px; }
+    .logo { 
+      width: 40px; height: 40px; 
+      background: linear-gradient(135deg, var(--primary), var(--accent)); 
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .brand { font-size: 20px; font-weight: 700; }
+    .brand span { color: var(--primary); }
+    .nav { display: flex; gap: 24px; }
+    .nav a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+    .nav a:hover { color: var(--primary); }
+    .nav a.cta {
+      background: var(--primary);
+      color: #000;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 24px;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--bg) 100%);
+    }
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 20px;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+    .btn {
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #000;
+    }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+    
+    /* Live Stats */
+    .live-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      max-width: 1000px;
+      margin: 0 auto 60px;
+    }
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    
+    /* Services */
+    .section { padding: 60px 24px; max-width: 1100px; margin: 0 auto; }
+    .section-title {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 48px;
+    }
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .service-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      transition: border-color 0.2s;
+    }
+    .service-card:hover { border-color: var(--primary); }
+    .service-icon {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+    .service-card h3 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+    .service-card p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    .service-features {
+      list-style: none;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .service-features li {
+      padding: 4px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+    .service-features li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: var(--primary);
+    }
+    
+    /* Why Choose */
+    .why-section {
+      background: var(--panel);
+      padding: 60px 24px;
+    }
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .why-card {
+      text-align: center;
+      padding: 24px;
+    }
+    .why-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: 0 auto 16px;
+    }
+    .why-card h3 { margin-bottom: 8px; }
+    .why-card p { color: var(--text-secondary); font-size: 14px; }
+    
+    /* CTA */
+    .cta-section {
+      text-align: center;
+      padding: 80px 24px;
+      background: linear-gradient(180deg, var(--bg) 0%, #0a1520 100%);
+    }
+    .cta-section h2 {
+      font-size: 36px;
+      margin-bottom: 16px;
+    }
+    .cta-section p {
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      font-size: 18px;
+    }
+    
+    /* Footer */
+    footer {
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      text-align: center;
+    }
+    footer p { color: var(--text-secondary); font-size: 14px; }
+    footer a { color: var(--primary); text-decoration: none; }
+    
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 32px; }
+      .live-stats { grid-template-columns: repeat(2, 1fr); }
+      .services-grid { grid-template-columns: 1fr; }
+      .why-grid { grid-template-columns: 1fr; }
+      .nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-section">
+      <div class="logo">🛡️</div>
+      <span class="brand">CIPHER<span>Security</span></span>
+    </div>
+    <nav class="nav">
+      <a href="#services">Services</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="#why">Why Us</a>
+      <a href="contact.html" class="cta">Get Started</a>
+    </nav>
+  </header>
+  
+  <!-- Hero -->
+  <section class="hero">
+    <h1>Enterprise Security<br><span>That Actually Works</span></h1>
+    <p>Real-time threat detection, penetration testing, and incident response. No fluff. Just results.</p>
+    <div class="hero-buttons">
+      <a href="contact.html" class="btn btn-primary">Get a Quote</a>
+      <a href="#services" class="btn btn-secondary">View Services</a>
+    </div>
+  </section>
+  
+  <!-- Live Stats -->
+  <section class="section">
+    <div class="live-stats">
+      <div class="stat-card">
+        <div class="stat-value">99.7%</div>
+        <div class="stat-label">Threat Detection Rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">&lt;5min</div>
+        <div class="stat-label">Avg. Response Time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">2,400+</div>
+        <div class="stat-label">Threats Blocked Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">24/7</div>
+        <div class="stat-label">Monitoring</div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Services -->
+  <section id="services" class="section">
+    <h2 class="section-title">Our Services</h2>
+    <div class="services-grid">
+      <div class="service-card">
+        <div class="service-icon">🎯</div>
+        <h3>Penetration Testing</h3>
+        <p>Full-scope ethical hacking to identify vulnerabilities before bad actors do.</p>
+        <ul class="service-features">
+          <li>Web applications</li>
+          <li>Network infrastructure</li>
+          <li>Mobile apps</li>
+          <li>Social engineering</li>
+        </ul>
+      </div>
+      
+      <div class="service-card">
+        <div class="service-icon">📋</div>
+        <h3>Security Audits</h3>
+        <p>Comprehensive assessments of your security posture.</p>
+        <ul class="service-features">
+          <li>Architecture review</li>
+          <li>Compliance checks (SOC2, HIPAA, PCI-DSS)</li>
+          <li>Risk assessment</li>
+          <li>Gap analysis</li>
+        </ul>
+      </div>
+      
+      <div class="service-card">
+        <div class="service-icon">🚨</div>
+        <h3>Incident Response</h3>
+        <p>When things go wrong, we're already there.</p>
+        <ul class="service-features">
+          <li>24/7 emergency response</li>
+          <li>Forensic analysis</li>
+          <li>Breach containment</li>
+          <li>Recovery & remediation</li>
+        </ul>
+      </div>
+      
+      <div class="service-card">
+        <div class="service-icon">🧠</div>
+        <h3>Security Consulting</h3>
+        <p>Strategic guidance to build security into your DNA.</p>
+        <ul class="service-features">
+          <li>Security architecture design</li>
+          <li>DevSecOps integration</li>
+          <li>Team training & workshops</li>
+          <li>Policy development</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Why Choose -->
+  <section id="why" class="why-section">
+    <h2 class="section-title">Why Choose CIPHER?</h2>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="why-icon">⚡</div>
+        <h3>Lightning Fast</h3>
+        <p>Sub-5-minute response times mean threats are neutralized before they become breaches.</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🎓</div>
+        <h3>Expert Team</h3>
+        <p>Certified professionals with decades of combined experience in offensive and defensive security.</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">📊</div>
+        <h3>Real-Time Insights</h3>
+        <p>Live dashboards and instant alerts keep you informed 24/7.</p>
+      </div>
+    </div>
+  </section>
+  
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>Ready to Secure Your Business?</h2>
+    <p>Get a free consultation and security assessment quote.</p>
+    <a href="contact.html" class="btn btn-primary">Get Started</a>
+  </section>
+  
+  <!-- Footer -->
+  <footer>
+    <p>© 2026 CIPHER Security. Built by <a href="https://uai.security">UAI</a>.</p>
+    <p style="margin-top: 8px;">📧 cipher@uai.security | 📱 @CIPHER_UAI</p>
+  </footer>
+</body>
+</html>
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'GA_MEASUREMENT_ID');
+</script>
+</body>

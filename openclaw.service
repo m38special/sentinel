@@ -1,0 +1,57 @@
+[Unit]
+Description=OpenClaw AI Assistant
+After=network.target
+
+[Service]
+Type=simple
+User=m38special
+Group=staff
+WorkingDirectory=/Users/m38special/.openclaw/workspace
+
+# Hardening: No new privileges
+NoNewPrivileges=true
+
+# Hardening: Read-only filesystem (except needed paths)
+ProtectSystem=strict
+ReadWritePaths=/Users/m38special/.openclaw/workspace
+ReadWritePaths=/Users/m38special/.openclaw/agents
+ReadWritePaths=/Users/m38special/.openclaw/backups
+
+# Hardening: Protect home directory
+ProtectHome=true
+
+# Hardening: Isolated process
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Hardening: Cannot gain new capabilities
+SecureBits=keep-caps
+LockPersonality=true
+
+# Hardening: Limit system calls
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# Resource limits
+MemoryMax=2G
+CPUQuota=80%
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=openclaw
+
+# Environment
+Environment=OPENCLAW_HOME=/Users/m38special/.openclaw
+
+ExecStart=/usr/local/bin/openclaw gateway
+
+[Install]
+WantedBy=multi-user.target

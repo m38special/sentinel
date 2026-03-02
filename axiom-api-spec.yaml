@@ -1,0 +1,687 @@
+openapi: 3.0.3
+info:
+  title: AXIOM Analytics API
+  description: |
+    Quantitative analytics platform providing whale tracking, yield signals, and market sentiment analysis.
+    Built for crypto-native teams requiring real-time on-chain intelligence.
+  version: 1.0.0
+  contact:
+    name: AXIOM Team
+    url: https://axiom.trade
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.axiom.trade/v1
+    description: Production server
+  - url: https://staging-api.axiom.trade/v1
+    description: Staging server
+
+tags:
+  - name: Whale Tracking
+    description: On-chain whale movement detection and tracking
+  - name: Yield Signals
+    description: DeFi yield optimization signals
+  - name: Sentiment
+    description: Market sentiment analysis
+
+paths:
+  /whale-tracking:
+    get:
+      tags:
+        - Whale Tracking
+      summary: Get whale activity data
+      description: |
+        Returns recent whale transactions filtered by parameters.
+        Whales are identified by wallet size, transaction volume, and movement patterns.
+      operationId: getWhaleTracking
+      parameters:
+        - name: chain
+          in: query
+          description: Blockchain network
+          schema:
+            type: string
+            enum: [solana, ethereum, arbitrum, base, all]
+            default: all
+        - name: min_volume_usd
+          in: query
+          description: Minimum transaction volume in USD
+          schema:
+            type: number
+            default: 10000
+        - name: timeframe
+          in: query
+          description: Time window for whale activity
+          schema:
+            type: string
+            enum: [1h, 6h, 24h, 7d]
+            default: 24h
+        - name: limit
+          in: query
+          description: Number of results (max 100)
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: cursor
+          in: query
+          description: Pagination cursor from previous response
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhaleTrackingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    post:
+      tags:
+        - Whale Tracking
+      summary: Subscribe to whale alerts
+      description: Create a webhook subscription for whale movement alerts
+      operationId: subscribeWhaleAlerts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WhaleAlertSubscription'
+      responses:
+        '201':
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /whale-tracking/{wallet_address}:
+    get:
+      tags:
+        - Whale Tracking
+      summary: Get specific whale wallet data
+      description: Detailed profile and transaction history for a tracked whale wallet
+      operationId: getWhaleProfile
+      parameters:
+        - name: wallet_address
+          in: path
+          required: true
+          description: Wallet address to query
+          schema:
+            type: string
+        - name: history_days
+          in: query
+          description: Days of history to retrieve (max 90)
+          schema:
+            type: integer
+            default: 30
+            maximum: 90
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhaleProfileResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /yield-signals:
+    get:
+      tags:
+        - Yield Signals
+      summary: Get yield optimization signals
+      description: |
+        Returns current yield opportunities with risk assessments and APY projections.
+        Signals include impermanent loss risk, smart contract risk scores, and TVL trends.
+      operationId: getYieldSignals
+      parameters:
+        - name: chain
+          in: query
+          description: Filter by blockchain
+          schema:
+            type: string
+            enum: [solana, ethereum, arbitrum, base, all]
+            default: all
+        - name: protocol
+          in: query
+          description: Filter by specific protocol
+          schema:
+            type: string
+        - name: min_apy
+          in: query
+          description: Minimum APY percentage
+          schema:
+            type: number
+        - name: risk_level
+          in: query
+          description: Risk tolerance filter
+          schema:
+            type: string
+            enum: [low, medium, high, all]
+            default: all
+        - name: limit
+          in: query
+          description: Number of results
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YieldSignalsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /yield-signals/pools/{pool_id}:
+    get:
+      tags:
+        - Yield Signals
+      summary: Get detailed pool analysis
+      description: Deep-dive analysis for a specific yield pool
+      operationId: getPoolAnalysis
+      parameters:
+        - name: pool_id
+          in: path
+          required: true
+          description: Pool identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolAnalysisResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /sentiment:
+    get:
+      tags:
+        - Sentiment
+      summary: Get market sentiment data
+      description: |
+        Aggregated sentiment from social media, on-chain metrics, and derivatives data.
+        Includes fear & greed index, social volume, and trend indicators.
+      operationId: getSentiment
+      parameters:
+        - name: asset
+          in: query
+          description: Specific asset symbol (e.g., BTC, SOL)
+          schema:
+            type: string
+        - name: timeframe
+          in: query
+          description: Analysis window
+          schema:
+            type: string
+            enum: [1h, 6h, 24h, 7d, 30d]
+            default: 24h
+        - name: sources
+          in: query
+          description: Data sources to include (comma-separated)
+          schema:
+            type: string
+            enum: [twitter, reddit, telegram, onchain, derivatives, all]
+            default: all
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SentimentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /sentiment/trending:
+    get:
+      name: getTrending
+    tags:
+      - Sentiment
+      summary: Get trending assets
+      description: Assets with highest social engagement and momentum
+    parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 10
+          maximum: 25
+    responses:
+      '200':
+        description: Successful response
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrendingResponse'
+
+components:
+  schemas:
+    # Shared Schemas
+    PaginationMeta:
+      type: object
+      properties:
+        cursor:
+          type: string
+          description: Cursor for next page
+        has_more:
+          type: boolean
+        total:
+          type: integer
+          description: Total records matching query
+
+    ErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+          description: Field that caused the error
+        message:
+          type: string
+          description: Error message
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: INVALID_REQUEST
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                $ref: '#/components/schemas/ErrorDetail'
+
+    # Whale Tracking Schemas
+    WhaleTransaction:
+      type: object
+      properties:
+        tx_hash:
+          type: string
+        wallet_address:
+          type: string
+        chain:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        volume_usd:
+          type: number
+        tokens:
+          type: array
+          items:
+            type: string
+        action:
+          type: string
+          enum: [buy, sell, transfer, deploy]
+        profit_loss_estimated:
+          type: number
+          description: Estimated P/L if closed (USD)
+
+    WhaleTrackingResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WhaleTransaction'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    WhaleAlertSubscription:
+      type: object
+      required:
+        - webhook_url
+        - min_volume_usd
+      properties:
+        webhook_url:
+          type: string
+          format: uri
+        min_volume_usd:
+          type: number
+          default: 10000
+        chains:
+          type: array
+          items:
+            type: string
+        notification_type:
+          type: string
+          enum: [all, large_only, new_whale]
+          default: all
+
+    SubscriptionResponse:
+      type: object
+      properties:
+        subscription_id:
+          type: string
+        status:
+          type: string
+          enum: [active, pending]
+        created_at:
+          type: string
+          format: date-time
+
+    WhaleProfileResponse:
+      type: object
+      properties:
+        wallet_address:
+          type: string
+        first_seen:
+          type: string
+          format: date-time
+        total_volume_usd:
+          type: number
+        total_transactions:
+          type: integer
+        avg_transaction_usd:
+          type: number
+        win_rate:
+          type: number
+          description: Estimated win rate percentage
+        top_tokens:
+          type: array
+          items:
+            type: string
+        recent_transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/WhaleTransaction'
+        tags:
+          type: array
+          items:
+            type: string
+          description: AI-generated tags (e.g., "early-adopter", "large-holder")
+
+    # Yield Signals Schemas
+    YieldSignal:
+      type: object
+      properties:
+        pool_id:
+          type: string
+        protocol:
+          type: string
+        chain:
+          type: string
+        tokens:
+          type: array
+          items:
+            type: string
+        apy:
+          type: number
+          description: Annual percentage yield (%)
+        apy_30d_avg:
+          type: number
+        tvl_usd:
+          type: number
+        risk_score:
+          type: integer
+          description: 1-100 risk score (lower = safer)
+        risk_factors:
+          type: array
+          items:
+            type: string
+        impermanent_loss_risk:
+          type: string
+          enum: [none, low, medium, high]
+        last_updated:
+          type: string
+          format: date-time
+
+    YieldSignalsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/YieldSignal'
+        generated_at:
+          type: string
+          format: date-time
+
+    PoolAnalysisResponse:
+      type: object
+      properties:
+        pool_id:
+          type: string
+        protocol:
+          type: string
+        chain:
+          type: string
+        token_pair:
+          type: array
+          items:
+            type: string
+        current_apy:
+          type: number
+        historical_apy:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              apy:
+                type: number
+        tvl_history:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              tvl_usd:
+                type: number
+        risk_analysis:
+          type: object
+          properties:
+            smart_contract_risk:
+              type: integer
+            liquidity_risk:
+              type: integer
+            impermanent_loss_risk:
+              type: integer
+            audit_status:
+              type: string
+            rug_pull_score:
+              type: number
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    # Sentiment Schemas
+    SentimentScore:
+      type: object
+      properties:
+        score:
+          type: number
+          description: -100 (fear) to +100 (greed)
+        label:
+          type: string
+          enum: [extreme_fear, fear, neutral, greed, extreme_greed]
+        confidence:
+          type: number
+
+    SentimentSource:
+      type: object
+      properties:
+        source:
+          type: string
+        score:
+          type: number
+        volume:
+          type: integer
+          description: Number of mentions
+        trending:
+          type: boolean
+
+    SentimentResponse:
+      type: object
+      properties:
+        asset:
+          type: string
+        sentiment:
+          $ref: '#/components/schemas/SentimentScore'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SentimentSource'
+        key_themes:
+          type: array
+          items:
+            type: string
+          description: Top discussed topics
+        timeframe:
+          type: string
+
+    TrendingAsset:
+      type: object
+      properties:
+        rank:
+          type: integer
+        symbol:
+          type: string
+        sentiment_score:
+          type: number
+        social_volume:
+          type: integer
+        momentum:
+          type: string
+          enum: [rising, falling, stable]
+
+    TrendingResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrendingAsset'
+        generated_at:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Invalid or missing API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when rate limit resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Your API key (get from dashboard)
+
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: JWT token for tier 3+ access
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+# Pricing Tiers Documentation
+x-pricing-tiers:
+  free:
+    name: Free
+    price: $0/mo
+    rate_limits:
+      - 100 requests/day
+      - 1 request/second
+    features:
+      - Whale tracking (delayed 1h)
+      - Yield signals (top 10 pools)
+      - Sentiment (basic, 24h only)
+    endpoints:
+      - GET /whale-tracking
+      - GET /yield-signals
+      - GET /sentiment
+
+  pro:
+    name: Pro
+    price: $99/mo
+    rate_limits:
+      - 10,000 requests/day
+      - 10 requests/second
+    features:
+      - Whale tracking (real-time)
+      - Full yield signal database
+      - Sentiment (all timeframes)
+      - 1 webhook subscription
+      - Email support
+    endpoints:
+      - GET /whale-tracking
+      - GET /whale-tracking/{wallet}
+      - POST /whale-tracking
+      - GET /yield-signals
+      - GET /yield-signals/pools/{pool_id}
+      - GET /sentiment
+      - GET /sentiment/trending
+
+  enterprise:
+    name: Enterprise
+    price: Custom
+    rate_limits:
+      - Unlimited
+      - Custom burst
+    features:
+      - Everything in Pro
+      - Custom whale alerts
+      - Historical data (90 days)
+      - Dedicated API support
+      - SLA guarantee
+      - Custom integrations
+      - On-premise deployment option
+    endpoints:
+      - All endpoints

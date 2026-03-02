@@ -1,0 +1,4 @@
+# Redirect all requests to https
+https://cipher.uai.security/*  200!
+
+# Or use a _redirects file for more control

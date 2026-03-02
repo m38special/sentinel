@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact | CIPHER Security</title>
+  <style>
+    :root {
+      --primary: #00C853;
+      --primary-dark: #00A844;
+      --accent: #4A90D9;
+      --bg: #0D1117;
+      --panel: #161B22;
+      --text-primary: #E6EDF3;
+      --text-secondary: #8B949E;
+      --border: #30363D;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo-section { display: flex; align-items: center; gap: 12px; }
+    .logo { 
+      width: 40px; height: 40px; 
+      background: linear-gradient(135deg, var(--primary), var(--accent)); 
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .brand { font-size: 20px; font-weight: 700; }
+    .brand span { color: var(--primary); }
+    .nav { display: flex; gap: 24px; }
+    .nav a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .nav a:hover { color: var(--primary); }
+    .nav a.cta {
+      background: var(--primary);
+      color: #000;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    
+    /* Main */
+    .contact-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 60px 24px;
+    }
+    
+    /* Info */
+    .contact-info h1 {
+      font-size: 40px;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+    .contact-info h1 span {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .contact-info > p {
+      font-size: 18px;
+      color: var(--text-secondary);
+      margin-bottom: 40px;
+    }
+    .contact-methods {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .contact-method {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .method-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .method-info h3 { font-size: 16px; margin-bottom: 2px; }
+    .method-info p { font-size: 14px; color: var(--text-secondary); }
+    .method-info a { color: var(--primary); text-decoration: none; }
+    
+    /* Form */
+    .form-container {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+    }
+    .form-container h2 {
+      font-size: 24px;
+      margin-bottom: 24px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 15px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .checkbox-label:hover { border-color: var(--primary); }
+    .checkbox-label input { display: none; }
+    .checkbox-label input:checked + span { color: var(--primary); }
+    .checkbox-label:has(input:checked) {
+      border-color: var(--primary);
+      background: rgba(0,200,83,0.1);
+    }
+    
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--primary);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+    .submit-btn:hover { background: var(--primary-dark); }
+    
+    /* Success Message */
+    .success-message {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+    .success-message.show { display: block; }
+    .success-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+    .success-message h3 {
+      font-size: 24px;
+      margin-bottom: 8px;
+      color: var(--primary);
+    }
+    .success-message p {
+      color: var(--text-secondary);
+    }
+    
+    /* Response Info */
+    .response-info {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 24px;
+    }
+    .response-info h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .response-steps {
+      display: flex;
+      gap: 16px;
+    }
+    .response-step {
+      flex: 1;
+      text-align: center;
+    }
+    .step-number {
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      color: #000;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      margin: 0 auto 8px;
+    }
+    .step-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    /* Footer */
+    footer {
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      text-align: center;
+      margin-top: 60px;
+    }
+    footer p { color: var(--text-secondary); font-size: 14px; }
+    footer a { color: var(--primary); text-decoration: none; }
+    
+    @media (max-width: 768px) {
+      .contact-section { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-section">
+      <div class="logo">🛡️</div>
+      <span class="brand">CIPHER<span>Security</span></span>
+    </div>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="index.html#services">Services</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="contact.html" class="cta" style="color: #000;">Contact</a>
+    </nav>
+  </header>
+  
+  <!-- Contact Section -->
+  <section class="contact-section">
+    <!-- Info -->
+    <div class="contact-info">
+      <h1>Let's Secure<br><span>Your Business</span></h1>
+      <p>Fill out the form and we'll get back to you within 24 hours with a customized security proposal.</p>
+      
+      <div class="contact-methods">
+        <div class="contact-method">
+          <div class="method-icon">📧</div>
+          <div class="method-info">
+            <h3>Email</h3>
+            <p><a href="mailto:cipher@uai.security">cipher@uai.security</a></p>
+          </div>
+        </div>
+        <div class="contact-method">
+          <div class="method-icon">📱</div>
+          <div class="method-info">
+            <h3>Telegram</h3>
+            <p><a href="https://t.me/CIPHER_UAI">@CIPHER_UAI</a></p>
+          </div>
+        </div>
+        <div class="contact-method">
+          <div class="method-icon">💬</div>
+          <div class="method-info">
+            <h3>Discord</h3>
+            <p>Join our community server</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="response-info">
+        <h3>⚡ What to Expect</h3>
+        <div class="response-steps">
+          <div class="response-step">
+            <div class="step-number">1</div>
+            <div class="step-label">We'll respond within 24 hours</div>
+          </div>
+          <div class="response-step">
+            <div class="step-number">2</div>
+            <div class="step-label">Quick call to understand your needs</div>
+          </div>
+          <div class="response-step">
+            <div class="step-number">3</div>
+            <div class="step-label">Custom quote within 48 hours</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Form -->
+    <div class="form-container">
+      <h2>Get Your Free Quote</h2>
+      
+      <form name="lead" data-netlify="true" id="leadForm">
+        <input type="hidden" name="form-name" value="lead">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="firstName">First Name *</label>
+            <input type="text" id="firstName" name="firstName" required placeholder="John">
+          </div>
+          <div class="form-group">
+            <label for="lastName">Last Name *</label>
+            <input type="text" id="lastName" name="lastName" required placeholder="Doe">
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" required placeholder="john@company.com">
+          </div>
+          <div class="form-group">
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="company">Company Name *</label>
+          <input type="text" id="company" name="company" required placeholder="Acme Corp">
+        </div>
+        
+        <div class="form-group">
+          <label for="service">Interested Service *</label>
+          <select id="service" name="service" required>
+            <option value="">Select a service...</option>
+            <option value="pen-testing">Penetration Testing</option>
+            <option value="security-audit">Security Audit</option>
+            <option value="incident-response">Incident Response</option>
+            <option value="consulting">Security Consulting</option>
+            <option value="monitoring">24/7 Monitoring</option>
+            <option value="other">Other / Not Sure</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Company Size</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="radio" name="companySize" value="1-10">
+              <span>1-10</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="radio" name="companySize" value="11-50">
+              <span>11-50</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="radio" name="companySize" value="51-200">
+              <span>51-200</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="radio" name="companySize" value="200+">
+              <span>200+</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="message">Tell Us About Your Needs *</label>
+          <textarea id="message" name="message" required placeholder="Describe your security needs, timeline, budget, or any specific concerns..."></textarea>
+        </div>
+        
+        <button type="submit" class="submit-btn">Submit Request</button>
+      </form>
+      
+      <div class="success-message" id="successMessage">
+        <div class="success-icon">✅</div>
+        <h3>Request Received!</h3>
+        <p>Thanks for reaching out. We'll be in touch within 24 hours.</p>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Footer -->
+  <footer>
+    <p>© 2026 CIPHER Security. Built by <a href="https://uai.security">UAI</a>.</p>
+  </footer>
+  
+  <script>
+    // Handle form submission - Netlify Forms compatible
+    document.getElementById('leadForm').addEventListener('submit', async function(e) {
+      // Netlify Forms handles submission automatically with data-netlify="true"
+      // This listener adds extra data and shows success message
+    });
+    
+    // Check for Netlify form submission result
+    window.addEventListener('DOMContentLoaded', function() {
+      if (window.location.search.includes('form-index')) {
+        document.getElementById('leadForm').style.display = 'none';
+        document.getElementById('successMessage').classList.add('show');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAI — Universal Agent Interface</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #0d1117;
+            color: #c9d1d9;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        h1, h2, h3 { color: #58a6ff; margin-top: 30px; margin-bottom: 15px; }
+        h1 { font-size: 2.5em; border-bottom: 1px solid #30363d; padding-bottom: 20px; }
+        h2 { font-size: 1.8em; }
+        h3 { font-size: 1.3em; color: #8b949e; }
+        code { background: #161b22; padding: 2px 8px; border-radius: 4px; font-size: 0.9em; color: #ff7b72; }
+        pre { background: #161b22; padding: 20px; border-radius: 8px; overflow-x: auto; margin: 15px 0; }
+        pre code { background: none; padding: 0; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px; text-align: left; border: 1px solid #30363d; }
+        th { background: #161b22; color: #58a6ff; }
+        tr:nth-child(even) { background: #161b22; }
+        .phase { display: inline-block; padding: 4px 12px; border-radius: 20px; margin-right: 10px; margin-bottom: 10px; font-size: 0.9em; }
+        .phase-done { background: #238636; color: #fff; }
+        .phase-live { background: #1f6feb; color: #fff; }
+        .nav { position: sticky; top: 0; background: #161b22; padding: 15px 0; border-bottom: 1px solid #30363d; z-index: 100; }
+        .nav a { color: #8b949e; text-decoration: none; margin-right: 20px; }
+        .nav a:hover { color: #58a6ff; }
+        .diagram { background: #161b22; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; }
+        .diagram code { color: #7ee787; }
+        .status-yes { color: #3fb950; }
+        .status-no { color: #f85149; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 15px 0; }
+        .card h3 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <div class="container">
+            <a href="#overview">Overview</a>
+            <a href="#architecture">Architecture</a>
+            <a href="#channels">Channels</a>
+            <a href="#intents">Intents</a>
+            <a href="#phases">Phases</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h1>🧠 UAI — Universal Agent Interface</h1>
+        <p><strong>Version:</strong> 0.2 | <strong>Status:</strong> Phase 6 Complete ✅</p>
+        
+        <h2 id="overview">Overview</h2>
+        <p>UAI is the shared communication protocol for all LiQUiD SOUND AI agents. It defines how agents discover each other, send tasks, share context, and confirm delivery — without manual relay.</p>
+        
+        <h2 id="architecture">Architecture</h2>
+        <div class="diagram">
+            <pre><code>┌─────────────┐    token_signal      ┌─────────────┐
+│   SENTINEL  │ ──────────────────▶│    AXIOM    │
+└─────────────┘                      └─────────────┘
+       │                                    │
+       │security_alert                      │
+       ▼                                    ▼
+┌─────────────┐                      ┌─────────────┐
+│   CIPHER    │◀─────UAI───────────│    NOVA     │
+└─────────────┘                      └─────────────┘
+       │                                    │
+       │                        social_signal│
+       ▼                                    ▼
+┌─────────────┐                      ┌─────────────┐
+│   YORUICHI  │◀─content_review────│    CEO      │
+└─────────────┘    ceo_dashboard     └─────────────┘</code></pre>
+        </div>
+        
+        <h2 id="channels">UAI Event Channels</h2>
+        <table>
+            <tr><th>Channel</th><th>Publisher</th><th>Subscribers</th><th>Status</th></tr>
+            <tr><td>uai:events:token_signal</td><td>SENTINEL</td><td>AXIOM, NOVA, YORUICHI</td><td class="status-yes">✅ Live</td></tr>
+            <tr><td>uai:events:security_alert</td><td>SENTINEL</td><td>CIPHER, YORUICHI, URAHARA</td><td class="status-yes">✅ Live</td></tr>
+            <tr><td>uai:events:social_signal</td><td>NOVA</td><td>SENTINEL, AXIOM</td><td class="status-yes">✅ Live</td></tr>
+            <tr><td>uai:events:content_review</td><td>SYSTEM</td><td>YORUICHI</td><td class="status-yes">✅ Live</td></tr>
+            <tr><td>uai:events:market_update</td><td>YORUICHI</td><td>ALL</td><td class="status-yes">✅ Live</td></tr>
+            <tr><td>uai:events:ceo_dashboard</td><td>YORUICHI</td><td>CEO</td><td class="status-yes">✅ Live</td></tr>
+            <tr><td>uai:broadcast</td><td>ANY</td><td>ALL</td><td class="status-yes">✅ Live</td></tr>
+        </table>
+        
+        <h2 id="intents">Intent Routing</h2>
+        <table>
+            <tr><th>Prefix</th><th>Owner</th><th>Examples</th></tr>
+            <tr><td><code>analyze.*</code></td><td>AXIOM</td><td>market_signal, risk_score</td></tr>
+            <tr><td><code>security.*</code></td><td>CIPHER</td><td>threat_flag, audit</td></tr>
+            <tr><td><code>social.*</code></td><td>NOVA</td><td>sentiment, trend_report</td></tr>
+            <tr><td><code>signal.*</code></td><td>SENTINEL</td><td>new_token, high_score</td></tr>
+            <tr><td><code>approve.*</code></td><td>YORUICHI</td><td>content_draft, trade_signal</td></tr>
+            <tr><td><code>report.*</code></td><td>MAXWELL</td><td>executive_summary, daily_brief</td></tr>
+            <tr><td><code>broadcast.*</code></td><td>SYSTEM</td><td>approve, reject, emergency</td></tr>
+        </table>
+        
+        <h2 id="phases">Phase Status</h2>
+        
+        <div class="card">
+            <h3>Phase 1 — Transport + Schema</h3>
+            <span class="phase phase-done">✅ Done</span>
+            <p>Transport layer (Redis), Message schema, Routing logic</p>
+        </div>
+        
+        <div class="card">
+            <h3>Phase 2 — Gateway + Registration</h3>
+            <span class="phase phase-done">✅ Done</span>
+            <p>Agent registration, Dead letter queue, ACK protocol, Gateway integration</p>
+        </div>
+        
+        <div class="card">
+            <h3>Phase 3 — SENTINEL → AXIOM Pilot</h3>
+            <span class="phase phase-done">✅ Done</span>
+            <p>SENTINEL publishes token signals, AXIOM responds via UAI, Feedback loop</p>
+        </div>
+        
+        <div class="card">
+            <h3>Phase 4 — UAI Expansion</h3>
+            <span class="phase phase-done">✅ Done</span>
+            <p>CIPHER security alerts, NOVA social signals, Intent registry v0.2</p>
+        </div>
+        
+        <div class="card">
+            <h3>Phase 5 — Content Approval Pipeline</h3>
+            <span class="phase phase-done">✅ Done</span>
+            <p>report.content_draft intent, YORUICHI approval gate, broadcast.approve/reject, NOVA auto-post</p>
+        </div>
+        
+        <div class="card">
+            <h3>Phase 6 — CFO Command Layer</h3>
+            <span class="phase phase-done">✅ Done</span>
+            <p>report.executive_summary auto-generation, market_update → daily briefing, Budget/risk alerts, CEO dashboard</p>
+        </div>
+        
+        <h2>Message Schema</h2>
+        <pre><code>{
+    "id": "uuid",
+    "from": "agent_id",
+    "to": "agent_id|broadcast",
+    "intent": "namespace.action",
+    "priority": "critical|high|medium|low",
+    "payload": {...},
+    "context_ref": "uuid|null",
+    "reply_to": "uuid|null",
+    "ts": "ISO 8601",
+    "ttl": 300
+}</code></pre>
+        
+        <h2>ACK Protocol</h2>
+        <table>
+            <tr><th>State</th><th>Description</th></tr>
+            <tr><td><code>queued</code></td><td>Task received</td></tr>
+            <tr><td><code>in_progress</code></td><td>Task being worked</td></tr>
+            <tr><td><code>done</code></td><td>Task completed</td></tr>
+            <tr><td><code>blocked</code></td><td>Task stuck</td></tr>
+            <tr><td><code>failed</code></td><td>Task failed</td></tr>
+        </table>
+        
+        <footer style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #30363d; color: #8b949e; text-align: center;">
+            <p>UAI v0.2 | LiQUiD SOUND | Built by Captain Yoruichi & Captain Urahara</p>
+            <p><a href="https://github.com/m38special/uai" style="color: #58a6ff;">GitHub →</a></p>
+        </footer>
+    </div>
+</body>
+</html>
