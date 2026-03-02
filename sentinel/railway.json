@@ -11,7 +11,9 @@
     "startupTimeout": 120,
     "env": [
       {"key": "PORT", "value": "8080"},
-      {"key": "REDIS_URL", "value": "{{REDIS_URL}}"}
+      {"key": "REDIS_URL", "value": "{{REDIS_URL}}"},
+      {"key": "SLACK_CHANNEL_ID", "value": "{{SLACK_CHANNEL_ID}}"},
+      {"key": "SLACK_BOT_TOKEN", "value": "{{SLACK_BOT_TOKEN}}"}
     ]
   }
 }
