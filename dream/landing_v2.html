@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiQUiD SOUND</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cyan: #00fff5;
+            --magenta: #ff00aa;
+            --black: #000;
+            --white: #fff;
+            --gray: #1a1a1a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--black);
+            color: var(--white);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        /* Glitch Effect */
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        
+        header {
+            padding: 30px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--gray);
+        }
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 4px;
+        }
+        .logo span { color: var(--cyan); }
+        
+        /* Hero - Split Screen */
+        .hero {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 90vh;
+        }
+        .hero-left {
+            padding: 100px 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-right: 1px solid var(--gray);
+        }
+        .hero-right {
+            background: 
+                radial-gradient(circle at 30% 30%, rgba(0,255,245,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 70% 70%, rgba(255,0,170,0.1) 0%, transparent 50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .hero-right::before {
+            content: 'LIQUID';
+            font-family: 'Syne', sans-serif;
+            font-size: 200px;
+            font-weight: 800;
+            color: rgba(255,255,255,0.02);
+            position: absolute;
+        }
+        
+        h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 64px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        h1::after {
+            content: 'SOUND';
+            position: absolute;
+            left: 5px;
+            top: 3px;
+            color: var(--magenta);
+            opacity: 0.5;
+            animation: glitch 3s infinite;
+        }
+        
+        .tagline {
+            color: var(--cyan);
+            font-size: 16px;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 15px 40px;
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            text-decoration: none;
+            font-weight: 700;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            width: fit-content;
+        }
+        .btn:hover {
+            background: var(--cyan);
+            color: var(--black);
+        }
+        
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-top: 1px solid var(--gray);
+        }
+        .stat {
+            padding: 40px;
+            text-align: center;
+            border-right: 1px solid var(--gray);
+        }
+        .stat:last-child { border-right: none; }
+        .stat-num {
+            font-family: 'Syne', sans-serif;
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--cyan);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            letter-spacing: 2px;
+            margin-top: 10px;
+        }
+        
+        /* Agents */
+        .agents-section {
+            padding: 100px 50px;
+        }
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 14px;
+            letter-spacing: 4px;
+            color: #666;
+            margin-bottom: 50px;
+        }
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1px;
+            background: var(--gray);
+        }
+        .agent {
+            background: var(--black);
+            padding: 40px 20px;
+            text-align: center;
+            transition: background 0.3s;
+        }
+        .agent:hover { background: var(--gray); }
+        .agent-icon {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+        .agent-name {
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .agent-role {
+            font-size: 11px;
+            color: #666;
+            letter-spacing: 1px;
+        }
+        
+        /* Wave */
+        .wave {
+            height: 100px;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%2300fff5" fill-opacity="0.1" d="M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
+            background-size: cover;
+        }
+        
+        @media (max-width: 768px) {
+            .hero { grid-template-columns: 1fr; }
+            .hero-right { display: none; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            .agent-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">LIQUID<span>SOUND</span></div>
+        <nav>
+            <a href="#" style="color:#666;text-decoration:none;margin-left:30px;">SYSTEM</a>
+            <a href="#" style="color:#666;text-decoration:none;margin-left:30px;">AGENTS</a>
+        </nav>
+    </header>
+    
+    <section class="hero">
+        <div class="hero-left">
+            <div class="tagline">// AI TRADING SYSTEM v2.0</div>
+            <h1>LIQUID<br>SOUND</h1>
+            <p style="color:#666;max-width:400px;margin-bottom:40px;">
+                Autonomous crypto intelligence. Real-time detection. 
+                ML-powered analysis. 24/7.
+            </p>
+            <a href="#" class="btn">INITIALIZE</a>
+        </div>
+        <div class="hero-right"></div>
+    </section>
+    
+    <section class="stats">
+        <div class="stat">
+            <div class="stat-num">10K+</div>
+            <div class="stat-label">TOKENS SCANNED</div>
+        </div>
+        <div class="stat">
+            <div class="stat-num">99.2%</div>
+            <div class="stat-label">DETECTION RATE</div>
+        </div>
+        <div class="stat">
+            <div class="stat-num">&lt;50ms</div>
+            <div class="stat-label">RESPONSE TIME</div>
+        </div>
+        <div class="stat">
+            <div class="stat-num">24/7</div>
+            <div class="stat-label">ACTIVE</div>
+        </div>
+    </section>
+    
+    <div class="wave"></div>
+    
+    <section class="agents-section">
+        <div class="section-title">// AGENT MATRIX</div>
+        <div class="agent-grid">
+            <div class="agent">
+                <div class="agent-icon">👑</div>
+                <div class="agent-name">YORUICHI</div>
+                <div class="agent-role">CFO</div>
+            </div>
+            <div class="agent">
+                <div class="agent-icon">⚡</div>
+                <div class="agent-name">URAHARA</div>
+                <div class="agent-role">CTO</div>
+            </div>
+            <div class="agent">
+                <div class="agent-icon">🧠</div>
+                <div class="agent-name">AXIOM</div>
+                <div class="agent-role">QUANT</div>
+            </div>
+            <div class="agent">
+                <div class="agent-icon">🔐</div>
+                <div class="agent-name">CIPHER</div>
+                <div class="agent-role">SECURITY</div>
+            </div>
+            <div class="agent">
+                <div class="agent-icon">📡</div>
+                <div class="agent-name">NOVA</div>
+                <div class="agent-role">SOCIAL</div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

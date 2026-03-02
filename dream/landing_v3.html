@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiQUiD SOUND | Premium AI Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #c9a227;
+            --gold-light: #e8d48a;
+            --black: #0a0a0a;
+            --cream: #f5f0e6;
+            --gray: #1a1a1a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: var(--black);
+            color: var(--cream);
+        }
+        
+        /* Subtle pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at 50% 50%, transparent 0%, var(--black) 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        header {
+            padding: 40px 80px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+        }
+        .logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: 8px;
+            color: var(--gold);
+        }
+        
+        /* Hero */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            padding: 0 20px;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 5;
+            max-width: 800px;
+        }
+        
+        .overline {
+            font-size: 12px;
+            letter-spacing: 6px;
+            color: var(--gold);
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+        
+        h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 120px;
+            font-weight: 300;
+            line-height: 0.9;
+            margin-bottom: 30px;
+            background: linear-gradient(180deg, var(--cream) 0%, var(--gold-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            font-weight: 300;
+            color: rgba(245,240,230,0.6);
+            max-width: 500px;
+            margin: 0 auto 50px;
+            line-height: 1.8;
+        }
+        
+        .cta-group {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 18px 50px;
+            font-size: 12px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: all 0.4s;
+        }
+        
+        .btn-primary {
+            background: var(--gold);
+            color: var(--black);
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background: var(--gold-light);
+        }
+        
+        .btn-secondary {
+            border: 1px solid var(--gold);
+            color: var(--gold);
+        }
+        .btn-secondary:hover {
+            background: var(--gold);
+            color: var(--black);
+        }
+        
+        /* Divider */
+        .divider {
+            width: 1px;
+            height: 100px;
+            background: linear-gradient(180deg, transparent, var(--gold), transparent);
+            margin: 80px auto;
+        }
+        
+        /* Services */
+        .services {
+            padding: 100px 80px;
+            position: relative;
+            z-index: 5;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+        
+        .section-label {
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: var(--gold);
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 48px;
+            font-weight: 300;
+        }
+        
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .service {
+            text-align: center;
+            padding: 40px 20px;
+            border: 1px solid rgba(201,162,39,0.2);
+            transition: border-color 0.4s;
+        }
+        .service:hover {
+            border-color: var(--gold);
+        }
+        
+        .service-icon {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        
+        .service h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: var(--gold-light);
+        }
+        
+        .service p {
+            font-size: 13px;
+            color: rgba(245,240,230,0.5);
+            line-height: 1.8;
+        }
+        
+        /* Team */
+        .team {
+            padding: 100px 80px;
+            background: rgba(20,20,20,0.5);
+        }
+        
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .member {
+            text-align: center;
+        }
+        
+        .member-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            border: 1px solid var(--gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            background: linear-gradient(135deg, rgba(201,162,39,0.1), transparent);
+        }
+        
+        .member-name {
+            font-size: 14px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            color: var(--gold);
+        }
+        
+        .member-role {
+            font-size: 11px;
+            color: rgba(245,240,230,0.4);
+        }
+        
+        /* Footer */
+        footer {
+            padding: 60px;
+            text-align: center;
+            border-top: 1px solid rgba(201,162,39,0.2);
+            position: relative;
+            z-index: 5;
+        }
+        
+        footer p {
+            font-size: 12px;
+            color: rgba(245,240,230,0.3);
+            letter-spacing: 2px;
+        }
+        
+        @media (max-width: 1024px) {
+            .services-grid, .team-grid { grid-template-columns: repeat(2, 1fr); }
+            h1 { font-size: 80px; }
+        }
+        
+        @media (max-width: 768px) {
+            header { padding: 30px; }
+            .services, .team { padding: 60px 30px; }
+            .services-grid, .team-grid { grid-template-columns: 1fr; }
+            h1 { font-size: 60px; }
+            .cta-group { flex-direction: column; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">LiQUiD SOUND</div>
+    </header>
+    
+    <section class="hero">
+        <div class="hero-content">
+            <div class="overline">Autonomous Crypto Intelligence</div>
+            <h1>LiQUiD<br>SOUND</h1>
+            <p class="subtitle">
+                Advanced AI agents working in harmony to detect, analyze, 
+                and execute. The future of trading is autonomous.
+            </p>
+            <div class="cta-group">
+                <a href="#" class="btn btn-primary">Enter System</a>
+                <a href="#" class="btn btn-secondary">Learn More</a>
+            </div>
+        </div>
+    </section>
+    
+    <div class="divider"></div>
+    
+    <section class="services">
+        <div class="section-header">
+            <div class="section-label">Capabilities</div>
+            <h2 class="section-title">Intelligent by Design</h2>
+        </div>
+        
+        <div class="services-grid">
+            <div class="service">
+                <div class="service-icon">🛡️</div>
+                <h3>Sentinel</h3>
+                <p>Real-time token monitoring with predictive ML scoring. Early rug detection.</p>
+            </div>
+            <div class="service">
+                <div class="service-icon">🧠</div>
+                <h3>AXIOM</h3>
+                <p>Quantitative analysis powered by historical data and backtested strategies.</p>
+            </div>
+            <div class="service">
+                <div class="service-icon">🔐</div>
+                <h3>CIPHER</h3>
+                <p>Security audits and continuous threat monitoring for total peace of mind.</p>
+            </div>
+            <div class="service">
+                <div class="service-icon">📡</div>
+                <h3>NOVA</h3>
+                <p>Social intelligence gathering sentiment analysis across all major platforms.</p>
+            </div>
+        </div>
+    </section>
+    
+    <section class="team">
+        <div class="section-header">
+            <div class="section-label">Leadership</div>
+            <h2 class="section-title">Meet the Team</h2>
+        </div>
+        
+        <div class="team-grid">
+            <div class="member">
+                <div class="member-avatar">👑</div>
+                <div class="member-name">Yoruichi</div>
+                <div class="member-role">CFO & Coordinator</div>
+            </div>
+            <div class="member">
+                <div class="member-avatar">⚡</div>
+                <div class="member-name">Urahara</div>
+                <div class="member-role">CTO & Architect</div>
+            </div>
+            <div class="member">
+                <div class="member-avatar">🧠</div>
+                <div class="member-name">AXIOM</div>
+                <div class="member-role">Quantitative</div>
+            </div>
+            <div class="member">
+                <div class="member-avatar">🔐</div>
+                <div class="member-name">CIPHER</div>
+                <div class="member-role">Security</div>
+            </div>
+            <div class="member">
+                <div class="member-avatar">📡</div>
+                <div class="member-name">NOVA</div>
+                <div class="member-role">Social</div>
+            </div>
+        </div>
+    </section>
+    
+    <footer>
+        <p>© 2026 LiQUiD SOUND. Crafted by Captains Yoruichi & Urahara.</p>
+    </footer>
+</body>
+</html>

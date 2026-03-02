@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiQUiD SOUND | AI-Powered Crypto Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f0ff;
+            --secondary: #7b2dff;
+            --accent: #ff2d6a;
+            --dark: #0a0a0f;
+            --darker: #050508;
+            --light: #e0e0e0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--darker);
+            color: var(--light);
+            overflow-x: hidden;
+        }
+        
+        /* Animated Background */
+        .bg-grid {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px),
+                linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            z-index: -1;
+        }
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+        
+        /* Header */
+        header {
+            padding: 20px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10,10,15,0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0,240,255,0.2);
+            position: fixed;
+            width: 100%;
+            z-index: 100;
+        }
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0,240,255,0.5);
+        }
+        nav a {
+            color: var(--light);
+            text-decoration: none;
+            margin-left: 30px;
+            font-size: 16px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        nav a:hover { color: var(--primary); }
+        
+        /* Hero */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 100px 20px;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(123,45,255,0.3) 0%, transparent 70%);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+        }
+        
+        .hero h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 72px;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff 0%, var(--primary) 50%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            0% { filter: drop-shadow(0 0 20px rgba(0,240,255,0.5)); }
+            100% { filter: drop-shadow(0 0 40px rgba(123,45,255,0.8)); }
+        }
+        
+        .hero p {
+            font-size: 24px;
+            max-width: 600px;
+            margin-bottom: 40px;
+            color: rgba(224,224,224,0.8);
+        }
+        
+        .cta-btn {
+            padding: 18px 50px;
+            font-size: 18px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            color: #000;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .cta-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 40px rgba(0,240,255,0.4);
+        }
+        .cta-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+        
+        /* Features */
+        .features {
+            padding: 100px 50px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .feature-card {
+            background: rgba(20,20,30,0.8);
+            border: 1px solid rgba(0,240,255,0.2);
+            padding: 40px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary);
+        }
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        .feature-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+        .feature-card p {
+            color: rgba(224,224,224,0.7);
+            line-height: 1.6;
+        }
+        
+        /* Agents */
+        .agents {
+            padding: 100px 50px;
+            background: rgba(10,10,20,0.5);
+        }
+        .agents h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 48px;
+            text-align: center;
+            margin-bottom: 60px;
+            color: var(--primary);
+        }
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .agent-card {
+            text-align: center;
+            padding: 30px;
+            background: rgba(30,30,50,0.5);
+            border: 1px solid rgba(123,45,255,0.3);
+        }
+        .agent-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+        }
+        .agent-card h4 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        .agent-card p {
+            font-size: 14px;
+            color: rgba(224,224,224,0.6);
+        }
+        
+        /* Footer */
+        footer {
+            padding: 50px;
+            text-align: center;
+            border-top: 1px solid rgba(0,240,255,0.2);
+            color: rgba(224,224,224,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    
+    <header>
+        <div class="logo">LiQUiD SOUND</div>
+        <nav>
+            <a href="#features">Features</a>
+            <a href="#agents">Agents</a>
+            <a href="#contact">Contact</a>
+        </nav>
+    </header>
+    
+    <section class="hero">
+        <h1>The Future of<br>Crypto Intelligence</h1>
+        <p>AI-powered token detection, risk analysis, and automated trading signals. Powered by a swarm of specialized agents.</p>
+        <button class="cta-btn">ENTER THE SYSTEM</button>
+    </section>
+    
+    <section class="features" id="features">
+        <div class="feature-card">
+            <div class="feature-icon">🛡️</div>
+            <h3>SENTINEL</h3>
+            <p>Real-time token monitoring with ML-powered scoring. Detects rugs before they pull.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>AXIOM</h3>
+            <p>Quantitative analysis engine. Backtested strategies with predictive modeling.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🔒</div>
+            <h3>CIPHER</h3>
+            <p>Security audits and continuous threat monitoring. Sleep soundly.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📱</div>
+            <h3>NOVA</h3>
+            <p>Social media intelligence. Sentiment analysis across all major platforms.</p>
+        </div>
+    </section>
+    
+    <section class="agents" id="agents">
+        <h2>Meet Your AI Team</h2>
+        <div class="agent-grid">
+            <div class="agent-card">
+                <div class="agent-avatar">👑</div>
+                <h4>Yoruichi</h4>
+                <p>CFO & Coordinator</p>
+            </div>
+            <div class="agent-card">
+                <div class="agent-avatar">⚡</div>
+                <h4>Urahara</h4>
+                <p>CTO & Architect</p>
+            </div>
+            <div class="agent-card">
+                <div class="agent-avatar">🧠</div>
+                <h4>AXIOM</h4>
+                <p>Quantitative Analyst</p>
+            </div>
+            <div class="agent-card">
+                <div class="agent-avatar">🔐</div>
+                <h4>CIPHER</h4>
+                <p>Security Specialist</p>
+            </div>
+        </div>
+    </section>
+    
+    <footer>
+        <p>© 2026 LiQUiD SOUND. Built by Captains Yoruichi & Urahara.</p>
+    </footer>
+</body>
+</html>
