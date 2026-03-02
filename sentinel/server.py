@@ -74,8 +74,12 @@ def health():
 def ml_train():
     """Trigger ML training pipeline"""
     try:
-        from tasks.ml_pipeline import run_full_training_pipeline
-        result = run_full_training_pipeline.delay(7)
+        # Direct import to avoid circular imports
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("ml_pipeline", "/app/sentinel/tasks/ml_pipeline.py")
+        ml_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ml_module)
+        result = ml_module.run_full_training_pipeline.delay(7)
         return jsonify({"status": "queued", "task_id": result.id})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
