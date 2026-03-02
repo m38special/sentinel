@@ -158,6 +158,55 @@ def ml_predictions():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/rukia/prices')
+def rukia_prices():
+    """Get Rukia's live trading prices"""
+    try:
+        import redis
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("rukia", "/app/sentinel/tasks/rukia_trading.py")
+        rukia = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rukia)
+        
+        # Update first
+        result = rukia.update_trading_data()
+        
+        # Get data
+        r = redis.from_url(REDIS_URL, decode_responses=True)
+        prices = r.get('rukia:prices:latest')
+        solana = r.get('rukia:solana')
+        
+        return jsonify({
+            "status": "ok",
+            "updated": result,
+            "prices": json.loads(prices) if prices else {},
+            "solana": json.loads(solana) if solana else {}
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/rukia/signals')
+def rukia_signals():
+    """Get Rukia's trading signals"""
+    try:
+        import redis
+        r = redis.from_url(REDIS_URL, decode_responses=True)
+        prices = r.get('rukia:prices:latest')
+        solana = r.get('rukia:solana')
+        
+        signals = []
+        if solana:
+            s = json.loads(solana)
+            change = s.get('change_24h', 0)
+            if change > 5:
+                signals.append({'token': 'SOL', 'signal': 'BULLISH', 'reason': f'+{change:.1f}% today'})
+            elif change < -5:
+                signals.append({'token': 'SOL', 'signal': 'BUY', 'reason': f'Oversold {change:.1f}%'})
+        
+        return jsonify({"signals": signals})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/ml/train')
 def ml_train():
     """Trigger ML training pipeline"""
