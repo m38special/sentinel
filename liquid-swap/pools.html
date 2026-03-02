@@ -74,6 +74,41 @@
         const DEX_COLORS = { 'Raydium': 'raydium', 'Orca': 'orca', 'Jupiter': 'jupiter', 'Lido': 'lido' };
         let allPools = [];
         
+        // Rate limiting
+        let lastFetch = 0;
+        const MIN_FETCH_INTERVAL = 30000; // 30 seconds between fetches
+        
+        async function safeFetch(url, options = {}, timeout = 5000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            
+            try {
+                const response = safeFetch(url, { ...options, signal: controller.signal });
+                clearTimeout(id);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return await response.json();
+            } catch (e) {
+                clearTimeout(id);
+                if (e.name === 'AbortError') {
+                    console.warn(`Fetch timeout: ${url}`);
+                    return null;
+                }
+                throw e;
+            }
+        }
+        
+        function canFetch() {
+            const now = Date.now();
+            if (now - lastFetch < MIN_FETCH_INTERVAL) {
+                return false;
+            }
+            lastFetch = now;
+            return true;
+        }
+        
         function formatNumber(num) {
             if (!num) return '$0';
             if (num >= 1e9) return '$' + (num / 1e9).toFixed(1) + 'B';
@@ -84,9 +119,9 @@
         
         async function fetchJupiterPools() {
             try {
-                const tokensRes = await fetch('https://token.jup.ag/all');
+                const tokensRes = safeFetch('https://token.jup.ag/all');
                 const tokens = await tokensRes.json();
-                const poolsRes = await fetch('https://api.jup.ag/v1/pools?sortBy=liquidity&order=desc&limit=15');
+                const poolsRes = safeFetch('https://api.jup.ag/v1/pools?sortBy=liquidity&order=desc&limit=15');
                 const poolsData = await poolsRes.json();
                 if (poolsData?.data) {
                     const pools = poolsData.data.map(pool => {
@@ -101,7 +136,7 @@
         
         async function fetchRaydiumPools() {
             try {
-                const res = await fetch('https://api.raydium.io/v2/ammPools');
+                const res = safeFetch('https://api.raydium.io/v2/ammPools');
                 const data = await res.json();
                 if (data?.data) {
                     const pools = data.data.filter(p => p.liquidity > 1000000).slice(0, 10).map(p => ({
@@ -114,7 +149,7 @@
         
         async function fetchOrcaPools() {
             try {
-                const res = await fetch('https://api.orca.so/allPools');
+                const res = safeFetch('https://api.orca.so/allPools');
                 const data = await res.json();
                 if (data) {
                     const pools = Object.values(data).filter(p => p.liquidity > 500000).slice(0, 8).map(p => ({
@@ -126,9 +161,22 @@
         }
         
         async function loadPools() {
+            if (!canFetch() && allPools.length > 0) {
+                console.log('Rate limited, using cached data');
+                return;
+            }
+            
             document.getElementById('poolList').innerHTML = '<div class="text-center text-yellow-500/50 py-8">Loading pool data from DEXs...</div>';
             allPools = [];
-            await Promise.all([fetchJupiterPools(), fetchRaydiumPools(), fetchOrcaPools()]);
+            
+            try {
+                await Promise.all([fetchJupiterPools(), fetchRaydiumPools(), fetchOrcaPools()]);
+            } catch (e) {
+                console.error('Failed to load pools:', e);
+                document.getElementById('poolList').innerHTML = '<div class="text-center text-red-500 py-8">Failed to load pool data. Please refresh.</div>';
+                return;
+            }
+            
             allPools.sort((a, b) => b.liquidity - a.liquidity);
             
             const totalTVL = allPools.reduce((s, p) => s + p.liquidity, 0);
