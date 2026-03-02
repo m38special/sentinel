@@ -169,3 +169,40 @@
 - **Simplicity First**: Minimal code, maximal impact
 - **No Laziness**: Find root causes. No temp fixes.
 - **Minimal Impact**: Only touch what's necessary
+
+---
+
+## Automation System (March 2, 2026)
+
+### Commands
+- `/deploy` - Deploy to Railway/Netlify
+- `/audit` - Run security scan
+- `/test` - Execute test suite
+- `/review` - Trigger 3-AI code review
+
+### Skills
+- `deploy.md` - Production deployment workflow
+- `security-audit.md` - Security scanning
+- `onboard-agent.md` - Add new AI agents
+
+### Rules
+- `security.md` - Security practices (never commit secrets)
+- `coding-style.md` - Code standards
+- `git-workflow.md` - Commit/PR process
+
+### Hooks
+- PreToolUse: Warn on curl/wget/pip install
+- PostToolUse: Validate Python syntax
+- Stop: Check for uncommitted changes
+
+### 3-AI Code Review
+- Codex: Logic & edge cases
+- Gemini: Security & scalability
+- Claude: Architecture validation
+- Runs on every PR via GitHub Actions
+
+## Recent Deployments (48h)
+- Liquid.Swap - DEX Aggregator
+- CEO Dashboard - Phase 6
+- Security Scanner - Phase 8
+- ML Training - Phase 7
