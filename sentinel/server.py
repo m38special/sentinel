@@ -5,7 +5,7 @@ import os
 import json
 import logging
 import asyncio
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, request
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -69,6 +69,68 @@ def dashboard_data():
 @app.route('/health')
 def health():
     return "OK"
+
+@app.route('/api/security/scan')
+def security_scan():
+    """Trigger security vulnerability scan"""
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("security_scanner", "/app/tasks/security_scanner.py")
+        ss_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ss_module)
+        result = ss_module.scan_codebase()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/memory/search')
+def memory_search():
+    """Search session memory for context"""
+    query = request.args.get('q', '')
+    if not query:
+        return jsonify({"error": "Query parameter 'q' required"}), 400
+    
+    try:
+        import redis
+        r = redis.from_url(REDIS_URL, decode_responses=True)
+        
+        # Search recent memory
+        results = []
+        memory_keys = r.keys("memory:*")
+        
+        for key in memory_keys[:100]:  # Limit search
+            data = r.get(key)
+            if data and query.lower() in data.lower():
+                results.append({"key": key, "preview": data[:200]})
+        
+        return jsonify({"query": query, "results": results, "count": len(results)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/memory/flush', methods=['POST'])
+def memory_flush():
+    """Flush old session memory"""
+    try:
+        import redis
+        r = redis.from_url(REDIS_URL, decode_responses=True)
+        
+        # Get TTL for flush
+        import time
+        max_age_hours = int(request.args.get('hours', 24))
+        
+        # Find and delete old memory
+        count = 0
+        memory_keys = r.keys("memory:*")
+        
+        for key in memory_keys:
+            ttl = r.ttl(key)
+            if ttl == -1:  # No expiry set
+                r.delete(key)
+                count += 1
+        
+        return jsonify({"status": "flushed", "keys_removed": count})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/market/analyze')
 def market_analyze():
