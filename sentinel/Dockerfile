@@ -27,6 +27,8 @@ RUN playwright install chromium && \
 COPY --chown=sentinel:sentinel . .
 
 # Switch to non-root
+EXPOSE 8080
+
 USER sentinel
 
 # Health check
