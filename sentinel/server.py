@@ -70,6 +70,16 @@ def dashboard_data():
 def health():
     return "OK"
 
+@app.route('/api/ml/train')
+def ml_train():
+    """Trigger ML training pipeline"""
+    try:
+        from sentinel.tasks.ml_pipeline import run_full_training_pipeline
+        result = run_full_training_pipeline.delay(7)
+        return jsonify({"status": "queued", "task_id": result.id})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     import threading
     
